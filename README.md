@@ -7,7 +7,7 @@ Inspirado no app Coucou (visto num reel em 02/10/2026), com nome, visual e escol
 *Xereta* é um nome provisório.
 
 ## Estado
-E0 concluída: esqueleto Tauri rodando e instalador de 1,33 MiB. Próxima etapa: E1 (a ilha e o mascote).
+E0 concluída (instalador de 1,33 MiB). E1 quase pronta: o gato (`design/mascote.html`) e a ilha rodando, faltando o teste na mão.
 
 | Documento | O que é |
 |---|---|

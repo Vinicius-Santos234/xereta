@@ -10,9 +10,22 @@
     "withGlobalTauri": true,
     "windows": [
       {
+        "label": "ilha",
         "title": "Xereta",
-        "width": 800,
-        "height": 600
+        "width": 140,
+        "height": 34,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": false,
+        "maximizable": false,
+        "minimizable": false,
+        "focus": false,
+        "focusable": false,
+        "shadow": false,
+        "visible": false,
+        "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --disable-gpu"
       }
     ],
     "security": {
