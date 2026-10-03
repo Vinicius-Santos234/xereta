@@ -1,0 +1,832 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Xereta · o gato</title>
+<style>
+  :root {
+    --fundo: #0c0d11;
+    --cartao: #15161c;
+    --borda: #24252e;
+    --texto: #ecebf0;
+    --suave: #8d8c99;
+    --ilha: #08080a;
+  }
+  body.claro {
+    --fundo: #efece6;
+    --cartao: #ffffff;
+    --borda: #dedad2;
+    --texto: #1d1c22;
+    --suave: #77746d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--fundo);
+    color: var(--texto);
+    font: 15px/1.5 system-ui, "Segoe UI", sans-serif;
+    transition: background .3s, color .3s;
+  }
+  main { max-width: 1040px; margin: 0 auto; padding: 32px 16px 64px; }
+  header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; }
+  h1 { margin: 0; font-size: 26px; letter-spacing: -.01em; }
+  h2 { margin: 48px 0 6px; font-size: 18px; }
+  p.sub { margin: 4px 0 0; color: var(--suave); }
+  .controles { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  button, label.chk {
+    font: inherit; font-size: 13px; color: var(--texto);
+    background: var(--cartao); border: 1px solid var(--borda);
+    border-radius: 999px; padding: 6px 14px; cursor: pointer;
+    display: inline-flex; gap: 6px; align-items: center;
+  }
+  button:hover { border-color: var(--suave); }
+  button.ativo { background: var(--texto); color: var(--fundo); border-color: var(--texto); }
+
+  .grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin-top: 28px; }
+  .cartao {
+    background: var(--cartao); border: 1px solid var(--borda); border-radius: 20px;
+    padding: 6px 6px 16px; text-align: center; transition: background .3s;
+  }
+  .cartao canvas { width: 100%; max-width: 240px; aspect-ratio: 1; display: block; margin: 0 auto; cursor: pointer; }
+  .cartao h3 { margin: 0; font-size: 16px; }
+  .cartao .gatilho { font: 12px ui-monospace, Consolas, monospace; color: var(--suave); }
+  .cartao .fala { margin-top: 6px; font-style: italic; }
+
+  .palco {
+    margin-top: 16px; padding: 28px 16px 36px; border-radius: 20px;
+    background: linear-gradient(180deg, #2b3242 0%, #1b1f29 100%);
+    display: flex; flex-direction: column; align-items: center; gap: 22px;
+  }
+  .seletor { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .pilula {
+    position: relative; width: 140px; height: 34px; border-radius: 17px;
+    background: var(--ilha); box-shadow: 0 0 0 1px rgba(255,255,255,.07), 0 6px 18px rgba(0,0,0,.45);
+    overflow: hidden; display: flex; align-items: center;
+  }
+  .pilula canvas { width: 56px; height: 34px; flex: none; margin-right: 2px; }
+  .pilula span { color: #e9e7ef; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 12px; }
+  .expandida {
+    position: relative; width: min(420px, 100%); min-height: 110px; border-radius: 28px;
+    background: var(--ilha); box-shadow: 0 0 0 1px rgba(255,255,255,.07), 0 10px 30px rgba(0,0,0,.5);
+    display: flex; align-items: center; overflow: hidden; color: #ecebf0;
+  }
+  .expandida canvas { width: 100px; height: 110px; flex: none; }
+  .expandida .info { padding: 12px 18px 12px 0; min-width: 0; }
+  .expandida .linha1 { font-size: 13px; color: #a9a7b4; }
+  .expandida .linha1 b { color: #fff; }
+  .expandida .linha2 { font-size: 15px; margin-top: 2px; }
+  .expandida code {
+    display: inline-block; margin-top: 6px; padding: 4px 10px; border-radius: 8px;
+    background: #1b1c22; border: 1px solid #2c2d36; font: 13px ui-monospace, Consolas, monospace;
+  }
+  .expandida .botoes { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .expandida .botoes button { background: #22232a; border-color: #2f3039; color: #ecebf0; padding: 4px 12px; }
+  .expandida .botoes button.sim { background: #f4f2ee; color: #111; border-color: #f4f2ee; }
+  .legenda { color: #9aa1b3; font-size: 12px; text-align: center; }
+
+  .notas { margin-top: 12px; color: var(--suave); }
+  .notas li { margin: 4px 0; }
+  .notas b { color: var(--texto); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>Xereta · o gato</h1>
+      <p class="sub">Protótipo da E1: os 6 estados do frajola. Clique num gato para cutucar; ele também acompanha o seu mouse.</p>
+    </div>
+    <div class="controles">
+      <label class="chk"><input type="checkbox" id="reduzir"> Reduzir movimento</label>
+      <button id="tema">Fundo claro</button>
+    </div>
+  </header>
+
+  <section class="grade" id="grade"></section>
+
+  <h2>Na ilha</h2>
+  <p class="sub">A pílula recolhida (140×34) e a ilha expandida (420×110), no tamanho real, sobre um fundo de área de trabalho.</p>
+  <div class="palco">
+    <div class="seletor" id="seletor"></div>
+    <div class="pilula"><canvas id="gato-pilula"></canvas><span id="texto-pilula"></span></div>
+    <div class="expandida">
+      <canvas id="gato-ilha"></canvas>
+      <div class="info" id="info-ilha"></div>
+    </div>
+    <div class="legenda">Na pílula só cabem orelhas e olhos: o gato espia por cima da borda de baixo.</div>
+  </div>
+
+  <h2>Como foi feito</h2>
+  <ul class="notas">
+    <li><b>Canvas 2D com molas.</b> Cada parte solta (orelhas, bigodes, olhos, o corpo inteiro) tem a própria mola, e por isso passa do ponto e volta, como desenho animado.</li>
+    <li><b>Volume em camadas:</b> base em diagonal, a cor do estado subindo de baixo, sombra nas bordas, brilho fixo em cima à esquerda e um halo da cor do estado atrás.</li>
+    <li><b>Cabeça que gira:</b> olhos, nariz, bigodes e a mancha andam sobre a esfera quando ele olha para os lados, mas o brilho fica parado. É isso que faz parecer 3D.</li>
+    <li><b>A mancha no escuro:</b> grafite com brilho, em vez de preto chapado, contorno escuro suave e o halo do estado separando a mancha do fundo.</li>
+    <li><b>Ainda não tem:</b> os gestos completos com os bigodes (joinha, OK, "não, não"). Aqui eles só mudam de pose e de ritmo por estado.</li>
+  </ul>
+</main>
+
+<script>
+'use strict';
+
+const TAU = Math.PI * 2;
+
+const ESTADOS = {
+  parado:      { rotulo: 'Parado',         gatilho: 'sem sessão ativa',  fala: '…',                   cor: [150, 175, 215], brilho: .16, tinta: 0,   olhos: 'normal',      orelhas: 'tremer',  bigodes: 'repouso',   pilula: 'korus' },
+  pensando:    { rotulo: 'Pensando',       gatilho: 'UserPromptSubmit',  fala: 'Hmm, deixa eu ver…',  cor: [150, 140, 255], brilho: .32, tinta: .22, olhos: 'normal',      orelhas: 'radar',   bigodes: 'queixo',    pilula: 'Pensando…' },
+  trabalhando: { rotulo: 'Trabalhando',    gatilho: 'PreToolUse',        fala: 'Bora!',               cor: [ 70, 205, 190], brilho: .30, tinta: .16, olhos: 'foco',        orelhas: 'helice',  bigodes: 'digitando', pilula: 'npm test' },
+  esperando:   { rotulo: 'Esperando você', gatilho: 'PermissionRequest', fala: 'Opa! Posso?',         cor: [255, 186,  60], brilho: .45, tinta: .30, olhos: 'pidao',       orelhas: 'alerta',  bigodes: 'apontar',   pilula: 'Posso?', pulso: true },
+  feliz:       { rotulo: 'Feliz',          gatilho: 'Stop',              fala: 'Prontinho!',          cor: [110, 215, 120], brilho: .40, tinta: .16, olhos: 'feliz',       orelhas: 'pular',   bigodes: 'comemorar', pilula: 'Prontinho!' },
+  erro:        { rotulo: 'Erro',           gatilho: 'StopFailure',       fala: 'Deu ruim…',           cor: [255,  95,  95], brilho: .40, tinta: .25, olhos: 'esbugalhado', orelhas: 'murchar', bigodes: 'murchar',   pilula: 'Deu ruim' },
+};
+
+const ILHA = {
+  parado:      { l1: 'korus', l2: 'Nada rolando por aqui' },
+  pensando:    { l1: 'korus', l2: 'Pensando no seu pedido…' },
+  trabalhando: { l1: 'korus', l2: 'Rodando <code>npm test</code>' },
+  esperando:   { l1: 'korus · Claude Code quer rodar um comando', l2: '<code>git push origin main</code>', botoes: true },
+  feliz:       { l1: 'korus', l2: 'Terminei! 3 arquivos alterados' },
+  erro:        { l1: 'korus', l2: 'Deu ruim: o comando falhou' },
+};
+
+// ---------- utilidades ----------
+const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+const lerp = (a, b, t) => a + (b - a) * t;
+let reduzirMovimento = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const mov = () => (reduzirMovimento ? 0 : 1);
+const ponteiro = { x: 0, y: 0, ativo: false };
+
+class Mola {
+  constructor(v = 0, k = 180, c = 16) { this.v = v; this.vel = 0; this.alvo = v; this.k = k; this.c = c; }
+  passo(dt) {
+    const a = this.k * (this.alvo - this.v) - this.c * this.vel;
+    this.vel += a * dt;
+    this.v += this.vel * dt;
+  }
+  chute(i) { this.vel += i; }
+}
+
+function poliArredondado(pts, r) {
+  const p = new Path2D();
+  const n = pts.length;
+  const a = pts[n - 1], b = pts[0];
+  p.moveTo((a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
+  for (let i = 0; i < n; i++) {
+    const c = pts[i], d = pts[(i + 1) % n];
+    p.arcTo(c[0], c[1], d[0], d[1], r);
+  }
+  p.closePath();
+  return p;
+}
+
+// superelipse um pouco mais cheia embaixo: cara de bochecha, não de bola
+function caminhoCabeca(rx, ry) {
+  const p = new Path2D();
+  const n = 2.3, passos = 72;
+  for (let k = 0; k <= passos; k++) {
+    const a = (k / passos) * TAU;
+    const ca = Math.cos(a), sa = Math.sin(a);
+    let x = rx * Math.sign(ca) * Math.pow(Math.abs(ca), 2 / n);
+    const y = ry * Math.sign(sa) * Math.pow(Math.abs(sa), 2 / n);
+    if (y > 0) x *= 1 + .05 * (y / ry);
+    if (k === 0) p.moveTo(x, y); else p.lineTo(x, y);
+  }
+  p.closePath();
+  return p;
+}
+
+function estrela(c, x, y, r) {
+  c.beginPath();
+  c.moveTo(x, y - r);
+  c.quadraticCurveTo(x, y, x + r, y);
+  c.quadraticCurveTo(x, y, x, y + r);
+  c.quadraticCurveTo(x, y, x - r, y);
+  c.quadraticCurveTo(x, y, x, y - r);
+  c.fill();
+}
+
+// ---------- o gato ----------
+class Gato {
+  constructor(canvas, opcoes = {}) {
+    this.cv = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.op = Object.assign({ estado: 'parado', pequeno: false, raio: null, cx: null, cy: null }, opcoes);
+    this.t = Math.random() * 10;
+
+    this.yaw = new Mola(0, 70, 12);
+    this.pitch = new Mola(0, 70, 12);
+    this.roll = new Mola(0, 90, 10);
+    this.amasso = new Mola(0, 260, 9);
+    this.pulo = new Mola(0, 200, 11);
+    this.chacoalho = new Mola(0, 400, 6);
+
+    this.piscar = 0;
+    this.piscando = -1;
+    this.proxPiscada = 1 + Math.random() * 3;
+
+    this.orelhas = [-1, 1].map(s => ({ s, rot: new Mola(0, 200, 11), ergue: new Mola(0, 220, 10), giro: 0 }));
+    this.bigodes = [-1, 1].flatMap(s => [0, 1, 2].map(i => ({
+      s, i, ang: new Mola(0, 220, 16), dobra: new Mola(0, 200, 16), comp: new Mola(1, 200, 16), osc: 0,
+    })));
+    this.particulas = [];
+    this.proxBrilho = 0;
+
+    this.redimensionar();
+    this.mudarEstado(this.op.estado, true);
+  }
+
+  redimensionar() {
+    const r = this.cv.getBoundingClientRect();
+    this.w = r.width || 220;
+    this.h = r.height || 220;
+    this.dpr = window.devicePixelRatio || 1;
+    this.cv.width = Math.round(this.w * this.dpr);
+    this.cv.height = Math.round(this.h * this.dpr);
+    this.R = this.op.raio ?? Math.min(this.w, this.h) * 0.24;
+    this.cx = this.op.cx ?? this.w / 2;
+    this.cy = this.op.cy ?? this.h * 0.53;
+  }
+
+  mudarEstado(e, inicio = false) {
+    this.estado = e;
+    this.cfg = ESTADOS[e];
+    this.tEstado = 0;
+    this.proxEvento = 0.35;
+    if (inicio) return;
+    const m = mov();
+    this.amasso.chute(1.2 * m);
+    this.iniciarPiscada();
+    if (e === 'erro') this.chacoalho.chute(30 * m);
+    if (e === 'feliz') this.pulo.chute(-3.5 * m);
+  }
+
+  cutucar() {
+    const m = mov();
+    this.amasso.chute(m ? 2.4 : 0);
+    this.pulo.chute(-1.4 * m);
+    for (const o of this.orelhas) { o.ergue.chute(3 * m); o.rot.chute(-o.s * 3 * m); }
+    this.iniciarPiscada();
+  }
+
+  iniciarPiscada() { this.piscando = 0; }
+
+  // ---------- comportamento ----------
+  alvosOrelha(o) {
+    const s = o.s;
+    switch (this.cfg.orelhas) {
+      case 'radar':   return { rot: 0, ergue: .05, giro: s < 0 ? .55 : -.55 };
+      case 'helice':  return { rot: -s * .1, ergue: .1, giro: 2.6 };
+      case 'alerta':  return { rot: -s * .38, ergue: .14, giro: 0 };
+      case 'murchar': return s < 0 ? { rot: -.95, ergue: -.12, giro: 0 } : { rot: .32, ergue: -.04, giro: 0 };
+    }
+    return { rot: 0, ergue: 0, giro: 0 };
+  }
+
+  alvosBigode(b) {
+    const { s, i } = b, t = this.t, m = mov();
+    const base = [-0.2, 0.06, 0.32];
+    switch (this.cfg.bigodes) {
+      case 'queixo':
+        if (s > 0) return { ang: .95 - base[i] * .3, dobra: .35, comp: .72, osc: Math.sin(t * TAU * 3 + i * .6) * .16 * m };
+        break;
+      case 'digitando':
+        return { ang: .12, dobra: 0, comp: .9, osc: Math.sin(t * TAU * 6.5 + i * 2.1 + (s > 0 ? 0 : 1.7)) * .2 * m };
+      case 'apontar':
+        if (s > 0) return { ang: -0.04 - base[i], dobra: -.08, comp: 1.12, osc: i === 0 ? -Math.max(0, Math.sin(t * TAU * 4)) * .22 * m : 0 };
+        return { ang: .22, dobra: 0, comp: .95, osc: Math.sin(t * 1.4 + i) * .03 * m };
+      case 'comemorar':
+        return { ang: -.5 - base[i] * .4, dobra: .28, comp: 1.08, osc: Math.sin(t * TAU * 3.5 + i * .8) * .12 * m };
+      case 'murchar':
+        return { ang: .55, dobra: .15, comp: .85, osc: Math.sin(t * TAU * 16 + i) * .025 * m };
+    }
+    return { ang: 0, dobra: 0, comp: 1, osc: Math.sin(t * 1.3 + i * 1.1 + s) * .04 * m };
+  }
+
+  atualizar(dt) {
+    const m = mov();
+    this.t += dt;
+    this.tEstado += dt;
+    const t = this.t, e = this.estado;
+
+    // para onde ele olha
+    let gy = 0, gp = 0, gr = Math.sin(t * .5) * .02 * m;
+    if (ponteiro.ativo) {
+      const r = this.cv.getBoundingClientRect();
+      const px = (ponteiro.x - (r.left + this.cx)) / this.R;
+      const py = (ponteiro.y - (r.top + this.cy)) / this.R;
+      gy = .42 * Math.tanh(px / 5);
+      gp = -.3 * Math.tanh(py / 5);
+    }
+    if (e === 'pensando') { gy = .28; gp = .32; gr = -.1 + Math.sin(t * .9) * .03 * m; }
+    if (e === 'trabalhando') {
+      const f = (t * .55) % 1;
+      gy = f < .85 ? lerp(-.3, .3, f / .85) : lerp(.3, -.3, (f - .85) / .15);
+      gp = -.18; gr = 0;
+    }
+    if (e === 'esperando') {
+      gr = Math.sin(t * 2.2) * .035 * m;
+      if (this.tEstado % 3.2 > 2.3) { gy = .38; gp = -.05; }
+    }
+    if (e === 'feliz') { gy *= .3; gp = .08 + gp * .3; gr = 0; }
+    if (e === 'erro') { gy *= .2; gp = -.08; gr = .07; }
+    if (!m) { gy *= .5; gp *= .5; }
+    this.yaw.alvo = gy; this.pitch.alvo = gp; this.roll.alvo = gr;
+
+    // respiração
+    const [freq, amp] = e === 'trabalhando' ? [1.1, .012] : [.28, .022];
+    this.resp = Math.sin(t * TAU * freq) * amp * (m ? 1 : .5);
+    this.balanco = e === 'trabalhando' ? -Math.abs(Math.sin(t * TAU * 2)) * .03 * m : 0;
+
+    // eventos de cada estado
+    this.proxEvento -= dt;
+    if (this.proxEvento <= 0) {
+      switch (e) {
+        case 'parado': {
+          const o = this.orelhas[Math.random() < .5 ? 0 : 1];
+          o.rot.chute((Math.random() < .5 ? -1 : 1) * 5 * m);
+          o.ergue.chute(1.5 * m);
+          this.proxEvento = 2 + Math.random() * 3.5;
+          break;
+        }
+        case 'esperando':
+          this.pulo.chute(-2 * m);
+          for (const o of this.orelhas) o.ergue.chute(2 * m);
+          this.proxEvento = 2.6;
+          break;
+        case 'feliz':
+          this.pulo.chute(-3.2 * m);
+          for (const o of this.orelhas) { o.ergue.chute(3.5 * m); o.rot.chute(-o.s * 4 * m); }
+          this.proxEvento = 1.5;
+          break;
+        case 'erro':
+          this.chacoalho.chute(22 * m);
+          this.proxEvento = 3.2;
+          break;
+        default:
+          this.proxEvento = 1;
+      }
+    }
+
+    // orelhas
+    for (const o of this.orelhas) {
+      const a = this.alvosOrelha(o);
+      o.rot.alvo = a.rot;
+      o.ergue.alvo = a.ergue;
+      if (a.giro && m) o.giro += a.giro * TAU * dt;
+      else {
+        const alvo = Math.round(o.giro / TAU) * TAU;
+        o.giro += (alvo - o.giro) * Math.min(1, dt * 8);
+      }
+    }
+
+    // bigodes
+    for (const b of this.bigodes) {
+      const a = this.alvosBigode(b);
+      b.ang.alvo = a.ang; b.dobra.alvo = a.dobra; b.comp.alvo = a.comp; b.osc = a.osc;
+    }
+
+    // piscar
+    if (this.piscando < 0) {
+      this.proxPiscada -= dt;
+      if (this.proxPiscada <= 0) {
+        this.iniciarPiscada();
+        this.proxPiscada = 2 + Math.random() * 4;
+        if (Math.random() < .2) setTimeout(() => this.iniciarPiscada(), 260);
+      }
+    } else {
+      this.piscando += dt;
+      const p = this.piscando;
+      this.piscar = p < .07 ? p / .07 : p < .18 ? 1 - (p - .07) / .11 : 0;
+      if (p >= .18) { this.piscando = -1; this.piscar = 0; }
+    }
+
+    // brilhos do feliz
+    if (e === 'feliz' && m && !this.op.pequeno) {
+      this.proxBrilho -= dt;
+      if (this.proxBrilho <= 0) {
+        const a = -Math.PI / 2 + (Math.random() - .5) * 2.6;
+        this.particulas.push({ x: Math.cos(a) * 1.4, y: Math.sin(a) * 1.25 - .1, vida: 0, dur: .9, tam: .07 + Math.random() * .06 });
+        this.proxBrilho = .22;
+      }
+    }
+    this.particulas = this.particulas.filter(p => (p.vida += dt) < p.dur);
+
+    // molas, em passos curtos para não explodir
+    const molas = [this.yaw, this.pitch, this.roll, this.amasso, this.pulo, this.chacoalho];
+    for (const o of this.orelhas) molas.push(o.rot, o.ergue);
+    for (const b of this.bigodes) molas.push(b.ang, b.dobra, b.comp);
+    const n = Math.ceil(dt / (1 / 240));
+    for (let k = 0; k < n; k++) for (const mo of molas) mo.passo(dt / n);
+  }
+
+  // ---------- desenho ----------
+  esfera(fy, fp, rx, ry) {
+    const a = fy + this.yaw.v, b = fp + this.pitch.v;
+    return { x: Math.sin(a) * Math.cos(b) * rx, y: -Math.sin(b) * ry, fx: Math.max(.15, Math.cos(a)), fp: Math.max(.15, Math.cos(b)) };
+  }
+
+  desenhar() {
+    const c = this.ctx, R = this.R, cfg = this.cfg;
+    c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    c.clearRect(0, 0, this.w, this.h);
+
+    const pulso = cfg.pulso ? .72 + .28 * Math.sin(this.t * 4) : 1;
+    const tremX = this.chacoalho.v * R * .06;
+    const cx = this.cx, cy = this.cy;
+    const y = cy + (this.pulo.v + this.balanco) * R;
+
+    // halo da cor do estado
+    const halo = c.createRadialGradient(cx, y, R * .4, cx, y, R * (this.op.pequeno ? 1.6 : 2.1));
+    halo.addColorStop(0, rgba(cfg.cor, cfg.brilho * pulso));
+    halo.addColorStop(1, rgba(cfg.cor, 0));
+    c.fillStyle = halo;
+    c.fillRect(0, 0, this.w, this.h);
+
+    // sombra no chão
+    if (!this.op.pequeno) {
+      const alt = Math.max(0, -this.pulo.v);
+      const sw = R * .85 * (1 - alt * .7);
+      c.save();
+      c.translate(cx + tremX, cy + R * 1.55);
+      c.scale(1, .2);
+      const sg = c.createRadialGradient(0, 0, 0, 0, 0, sw);
+      sg.addColorStop(0, `rgba(0,0,0,${.4 * (1 - alt)})`);
+      sg.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = sg;
+      c.beginPath(); c.arc(0, 0, sw, 0, TAU); c.fill();
+      c.restore();
+    }
+
+    c.save();
+    c.translate(cx + tremX, y);
+    c.rotate(this.roll.v + this.chacoalho.v * .04);
+
+    const estica = Math.min(.12, Math.abs(this.pulo.vel) * .02);
+    const sq = this.amasso.v;
+    const rx = R * 1.07 * (1 + sq - this.resp * .5 - estica * .5);
+    const ry = R * .95 * (1 - sq + this.resp + estica);
+
+    for (const o of this.orelhas) this.desenharOrelha(o, rx, ry);
+
+    const cabeca = caminhoCabeca(rx, ry);
+
+    // base com luz de cima à esquerda
+    const base = c.createLinearGradient(-rx * .7, -ry * .9, rx * .7, ry * .95);
+    base.addColorStop(0, '#fffcf6');
+    base.addColorStop(.55, '#f5ede2');
+    base.addColorStop(1, '#ddcfbd');
+    c.fillStyle = base;
+    c.fill(cabeca);
+
+    c.save();
+    c.clip(cabeca);
+
+    // a mancha do frajola
+    const mancha = c.createLinearGradient(-rx, -ry, rx * .25, ry * .35);
+    mancha.addColorStop(0, '#55525e');
+    mancha.addColorStop(1, '#1c1b21');
+    c.fillStyle = mancha;
+    c.fill(this.caminhoMancha(rx, ry));
+
+    // cor do estado subindo de baixo
+    if (cfg.tinta) {
+      const tg = c.createLinearGradient(0, ry, 0, -ry * .2);
+      tg.addColorStop(0, rgba(cfg.cor, cfg.tinta * (cfg.pulso ? pulso : 1)));
+      tg.addColorStop(1, rgba(cfg.cor, 0));
+      c.fillStyle = tg;
+      c.fill(cabeca);
+    }
+
+    // bochechas
+    for (const s of [-1, 1]) {
+      const q = this.esfera(s * .6, -.24, rx, ry);
+      const bg = c.createRadialGradient(q.x, q.y, 0, q.x, q.y, R * .2);
+      bg.addColorStop(0, `rgba(255,135,160,${s < 0 ? .3 : .4})`);
+      bg.addColorStop(1, 'rgba(255,135,160,0)');
+      c.fillStyle = bg;
+      c.fillRect(q.x - R * .25, q.y - R * .25, R * .5, R * .5);
+    }
+
+    // sombra nas bordas (dá o volume)
+    const ao = c.createRadialGradient(-rx * .15, -ry * .2, R * .45, 0, 0, R * 1.1);
+    ao.addColorStop(0, 'rgba(60,40,50,0)');
+    ao.addColorStop(.72, 'rgba(60,40,50,.05)');
+    ao.addColorStop(1, 'rgba(45,28,40,.42)');
+    c.fillStyle = ao;
+    c.fill(cabeca);
+
+    // luz rebatida da cor do estado, embaixo
+    const reb = c.createRadialGradient(rx * .25, ry * 1.05, 0, rx * .25, ry * 1.05, R * .7);
+    reb.addColorStop(0, rgba(cfg.cor, .35 * (cfg.pulso ? pulso : 1)));
+    reb.addColorStop(1, rgba(cfg.cor, 0));
+    c.fillStyle = reb;
+    c.fill(cabeca);
+
+    // brilho fixo: não gira com a cabeça
+    const hl = c.createRadialGradient(-rx * .3, -ry * .46, 0, -rx * .3, -ry * .46, R * .6);
+    hl.addColorStop(0, 'rgba(255,255,255,.42)');
+    hl.addColorStop(1, 'rgba(255,255,255,0)');
+    c.fillStyle = hl;
+    c.fill(cabeca);
+    c.save();
+    c.translate(-rx * .38, -ry * .6);
+    c.rotate(-.55);
+    c.scale(1, .4);
+    const hs = c.createRadialGradient(0, 0, 0, 0, 0, R * .22);
+    hs.addColorStop(0, 'rgba(255,255,255,.32)');
+    hs.addColorStop(1, 'rgba(255,255,255,0)');
+    c.fillStyle = hs;
+    c.beginPath(); c.arc(0, 0, R * .22, 0, TAU); c.fill();
+    c.restore();
+
+    // olhos
+    for (const s of [-1, 1]) this.desenharOlho(s, rx, ry);
+    c.restore();
+
+    // contorno
+    c.lineWidth = Math.max(1, R * .03);
+    c.strokeStyle = 'rgba(28,20,30,.5)';
+    c.stroke(cabeca);
+
+    this.desenharNariz(rx, ry);
+    this.desenharBigodes(rx, ry);
+    if (this.estado === 'erro' && !this.op.pequeno) this.desenharSuor(rx, ry);
+
+    c.restore();
+
+    // brilhos
+    c.save();
+    c.fillStyle = '#ffd863';
+    c.shadowColor = 'rgba(255,200,80,.9)';
+    c.shadowBlur = R * .15;
+    for (const p of this.particulas) {
+      const k = p.vida / p.dur;
+      const r = R * p.tam * Math.sin(k * Math.PI);
+      estrela(c, cx + p.x * R, cy + (p.y - k * .25) * R, r);
+    }
+    c.restore();
+  }
+
+  caminhoMancha(rx, ry) {
+    const ox = this.yaw.v * rx * .55, oy = -this.pitch.v * ry * .35;
+    const P = (x, y) => [x * rx + ox, y * ry + oy];
+    const p = new Path2D();
+    p.moveTo(...P(.12, -1.3));
+    p.bezierCurveTo(...P(.2, -.75), ...P(.22, -.32), ...P(-.02, -.06));
+    p.bezierCurveTo(...P(-.28, .2), ...P(-.72, .26), ...P(-1.3, .14));
+    p.lineTo(...P(-1.3, -1.3));
+    p.closePath();
+    return p;
+  }
+
+  desenharOrelha(o, rx, ry) {
+    const c = this.ctx, R = this.R, s = o.s;
+    const vib = this.cfg.orelhas === 'alerta' ? Math.sin(this.t * 38 + s) * .015 * mov() : 0;
+    const ang = s * .78 + o.rot.v + vib;
+    const bx = s * .78 * rx + this.yaw.v * R * .3;
+    const by = -.74 * ry - this.pitch.v * R * .2;
+    const lift = o.ergue.v * R;
+
+    c.save();
+    c.translate(bx + Math.sin(ang) * lift, by - Math.cos(ang) * lift);
+    c.rotate(ang);
+    const gx = Math.cos(o.giro);
+    c.scale(Math.abs(gx) < .05 ? .05 * Math.sign(gx || 1) : gx, 1);
+    const frente = gx >= 0;
+    const escura = s < 0;
+    c.lineJoin = 'round';
+
+    const forma = poliArredondado([[-.3 * R, .04 * R], [.3 * R, .04 * R], [0, -.66 * R]], .13 * R);
+    const g = c.createLinearGradient(-.3 * R, -.66 * R, .3 * R, .05 * R);
+    if (escura) { g.addColorStop(0, frente ? '#57545f' : '#2a2830'); g.addColorStop(1, frente ? '#1c1b21' : '#131216'); }
+    else        { g.addColorStop(0, frente ? '#fffbf4' : '#d6cab9'); g.addColorStop(1, frente ? '#e2d5c4' : '#b8ab9b'); }
+    c.fillStyle = g;
+    c.fill(forma);
+
+    if (frente) {
+      const dentro = poliArredondado([[-.16 * R, -.04 * R], [.16 * R, -.04 * R], [0, -.46 * R]], .07 * R);
+      const gi = c.createLinearGradient(0, -.42 * R, 0, -.04 * R);
+      if (escura) { gi.addColorStop(0, '#93606f'); gi.addColorStop(1, '#4a3540'); }
+      else        { gi.addColorStop(0, '#ffc7d4'); gi.addColorStop(1, '#ee96ad'); }
+      c.fillStyle = gi;
+      c.fill(dentro);
+      // brilho macio, recortado dentro da orelha
+      c.save();
+      c.clip(forma);
+      const hb = c.createRadialGradient(-.12 * R, -.36 * R, 0, -.12 * R, -.36 * R, .32 * R);
+      hb.addColorStop(0, escura ? 'rgba(255,255,255,.22)' : 'rgba(255,255,255,.7)');
+      hb.addColorStop(1, 'rgba(255,255,255,0)');
+      c.fillStyle = hb;
+      c.fill(forma);
+      c.restore();
+    }
+    c.lineWidth = Math.max(1, .03 * R);
+    c.strokeStyle = 'rgba(28,20,30,.5)';
+    c.stroke(forma);
+    c.restore();
+  }
+
+  desenharOlho(s, rx, ry) {
+    const c = this.ctx, R = this.R, tipo = this.cfg.olhos;
+    const q = this.esfera(s * .4, .06, rx, ry);
+    let w = .135 * R, h = .185 * R;
+    if (tipo === 'pidao') { w *= 1.22; h *= 1.2; }
+    if (tipo === 'esbugalhado') { w *= 1.42; h *= 1.42; }
+    if (tipo === 'foco') h *= .55;
+    w *= q.fx; h *= q.fp;
+    const claro = s < 0; // o olho dentro da mancha é claro, como no esboço
+
+    c.save();
+    c.translate(q.x, q.y);
+    if (tipo === 'esbugalhado') c.translate(Math.sin(this.t * 47 + s) * R * .01 * mov(), 0);
+
+    if (tipo === 'feliz') {
+      c.beginPath();
+      c.moveTo(-w * 1.1, h * .25);
+      c.quadraticCurveTo(0, -h * 1.15, w * 1.1, h * .25);
+      c.lineCap = 'round';
+      c.lineWidth = .075 * R;
+      c.strokeStyle = claro ? '#fff3df' : '#241e28';
+      c.stroke();
+      c.restore();
+      return;
+    }
+
+    const aberto = 1 - this.piscar;
+    const hh = h * Math.max(.08, aberto);
+    const g = c.createLinearGradient(0, -hh, 0, hh);
+    if (claro) { g.addColorStop(0, '#fffaf0'); g.addColorStop(1, '#e9c88e'); }
+    else       { g.addColorStop(0, '#3d3443'); g.addColorStop(1, '#110d14'); }
+    c.beginPath();
+    c.ellipse(0, 0, w, hh, 0, 0, TAU);
+    c.fillStyle = g;
+    c.fill();
+    if (claro) { c.lineWidth = R * .02; c.strokeStyle = 'rgba(0,0,0,.4)'; c.stroke(); }
+
+    if (aberto > .4) {
+      const grande = tipo === 'pidao' ? 1.35 : 1;
+      c.fillStyle = 'rgba(255,255,255,.95)';
+      c.beginPath(); c.ellipse(-w * .3, -hh * .4, w * .3 * grande, w * .3 * grande, 0, 0, TAU); c.fill();
+      c.fillStyle = 'rgba(255,255,255,.75)';
+      c.beginPath(); c.arc(w * .32, hh * .4, w * .13 * grande, 0, TAU); c.fill();
+      if (tipo === 'pidao') { c.beginPath(); c.arc(w * .05, hh * .6, w * .08, 0, TAU); c.fill(); }
+    }
+    c.restore();
+  }
+
+  desenharNariz(rx, ry) {
+    const c = this.ctx, R = this.R;
+    const q = this.esfera(0, -.17, rx, ry);
+    c.save();
+    c.translate(q.x, q.y);
+    c.scale(q.fx, q.fp);
+    const p = poliArredondado([[-.145 * R, -.085 * R], [.145 * R, -.085 * R], [0, .13 * R]], .055 * R);
+    const g = c.createLinearGradient(0, -.09 * R, 0, .14 * R);
+    g.addColorStop(0, '#ffcad7');
+    g.addColorStop(1, '#e8718f');
+    c.fillStyle = g;
+    c.fill(p);
+    c.lineWidth = Math.max(.8, .022 * R);
+    c.strokeStyle = 'rgba(130,40,70,.5)';
+    c.stroke(p);
+    c.fillStyle = 'rgba(255,255,255,.75)';
+    c.beginPath(); c.ellipse(-.05 * R, -.045 * R, .05 * R, .022 * R, -.2, 0, TAU); c.fill();
+    c.restore();
+  }
+
+  desenharBigodes(rx, ry) {
+    if (this.op.pequeno) return;
+    const c = this.ctx, R = this.R;
+    const bases = [-0.2, 0.06, 0.32], comps = [.95, .92, .82];
+    for (const b of this.bigodes) {
+      const { s, i } = b;
+      const q = this.esfera(s * (.2 + i * .035), -.2 - i * .075, rx, ry);
+      const a = bases[i] + b.ang.v + b.osc;
+      const L = R * comps[i] * b.comp.v;
+      const ca = Math.cos(a), sa = Math.sin(a);
+      const x1 = q.x + s * ca * L, y1 = q.y + sa * L;
+      const mx = q.x + s * ca * L * .5, my = q.y + sa * L * .5;
+      const curva = (.12 + b.dobra.v) * L;
+      const kx = mx - s * sa * curva, ky = my + ca * curva;
+      // contorno do bigode: grosso na raiz, fino na ponta
+      const esq = [], dir = [], N = 12;
+      for (let k = 0; k <= N; k++) {
+        const u = k / N, v = 1 - u;
+        const px = v * v * q.x + 2 * v * u * kx + u * u * x1;
+        const py = v * v * q.y + 2 * v * u * ky + u * u * y1;
+        const dx = 2 * v * (kx - q.x) + 2 * u * (x1 - kx);
+        const dy = 2 * v * (ky - q.y) + 2 * u * (y1 - ky);
+        const len = Math.hypot(dx, dy) || 1;
+        const lw = R * lerp(.034, .011, u);
+        esq.push([px - dy / len * lw, py + dx / len * lw]);
+        dir.push([px + dy / len * lw, py - dx / len * lw]);
+      }
+      const raiz = new Path2D();
+      raiz.arc(q.x, q.y, R * .034, 0, TAU);
+      const forma = new Path2D();
+      forma.moveTo(...esq[0]);
+      for (const p of esq) forma.lineTo(...p);
+      for (let k = dir.length - 1; k >= 0; k--) forma.lineTo(...dir[k]);
+      forma.closePath();
+      c.lineJoin = 'round';
+      c.lineWidth = R * .028;
+      c.strokeStyle = 'rgba(30,22,32,.72)';
+      c.stroke(forma);
+      c.stroke(raiz);
+      c.fillStyle = '#f8f2e8';
+      c.fill(forma);
+      c.fill(raiz);
+    }
+  }
+
+  desenharSuor(rx, ry) {
+    const c = this.ctx, R = this.R;
+    const k = (this.tEstado * .7) % 1;
+    const r = R * .07;
+    c.save();
+    c.globalAlpha = k < .8 ? 1 : 1 - (k - .8) / .2;
+    c.translate(rx * .8, -ry * .38 + k * ry * .35);
+    c.beginPath();
+    c.moveTo(0, -1.7 * r);
+    c.bezierCurveTo(r * .9, -.4 * r, r, r * .9, 0, r);
+    c.bezierCurveTo(-r, r * .9, -r * .9, -.4 * r, 0, -1.7 * r);
+    const g = c.createLinearGradient(0, -1.7 * r, 0, r);
+    g.addColorStop(0, '#e2f5ff');
+    g.addColorStop(1, '#5eaeea');
+    c.fillStyle = g;
+    c.fill();
+    c.lineWidth = Math.max(.8, R * .02);
+    c.strokeStyle = 'rgba(20,60,110,.5)';
+    c.stroke();
+    c.fillStyle = 'rgba(255,255,255,.85)';
+    c.beginPath(); c.arc(-r * .3, 0, r * .25, 0, TAU); c.fill();
+    c.restore();
+  }
+}
+
+// ---------- página ----------
+const gatos = [];
+const grade = document.getElementById('grade');
+for (const [chave, e] of Object.entries(ESTADOS)) {
+  const cartao = document.createElement('div');
+  cartao.className = 'cartao';
+  cartao.innerHTML = `<canvas></canvas><h3>${e.rotulo}</h3><div class="gatilho">${e.gatilho}</div><div class="fala">“${e.fala}”</div>`;
+  grade.appendChild(cartao);
+  const cv = cartao.querySelector('canvas');
+  const g = new Gato(cv, { estado: chave });
+  cv.addEventListener('click', () => g.cutucar());
+  gatos.push(g);
+}
+
+const gatoPilula = new Gato(document.getElementById('gato-pilula'), { pequeno: true, raio: 16, cx: 30, cy: 25 });
+const gatoIlha = new Gato(document.getElementById('gato-ilha'), { raio: 27, cx: 52, cy: 60 });
+gatos.push(gatoPilula, gatoIlha);
+document.getElementById('gato-ilha').addEventListener('click', () => gatoIlha.cutucar());
+
+const seletor = document.getElementById('seletor');
+function escolher(chave) {
+  gatoPilula.mudarEstado(chave);
+  gatoIlha.mudarEstado(chave);
+  document.getElementById('texto-pilula').textContent = ESTADOS[chave].pilula;
+  const i = ILHA[chave];
+  document.getElementById('info-ilha').innerHTML =
+    `<div class="linha1"><b>${i.l1.split(' · ')[0]}</b>${i.l1.includes(' · ') ? ' · ' + i.l1.split(' · ')[1] : ''}</div>` +
+    `<div class="linha2">${i.l2}</div>` +
+    (i.botoes ? '<div class="botoes"><button>Negar</button><button>No terminal</button><button class="sim">Permitir</button></div>' : '');
+  for (const b of seletor.children) b.classList.toggle('ativo', b.dataset.estado === chave);
+}
+for (const [chave, e] of Object.entries(ESTADOS)) {
+  const b = document.createElement('button');
+  b.textContent = e.rotulo;
+  b.dataset.estado = chave;
+  b.addEventListener('click', () => escolher(chave));
+  seletor.appendChild(b);
+}
+escolher('esperando');
+
+addEventListener('pointermove', ev => { ponteiro.x = ev.clientX; ponteiro.y = ev.clientY; ponteiro.ativo = true; });
+document.addEventListener('pointerleave', () => { ponteiro.ativo = false; });
+addEventListener('resize', () => gatos.forEach(g => g.redimensionar()));
+
+const chkReduzir = document.getElementById('reduzir');
+chkReduzir.checked = reduzirMovimento;
+chkReduzir.addEventListener('change', () => { reduzirMovimento = chkReduzir.checked; });
+
+const botaoTema = document.getElementById('tema');
+botaoTema.addEventListener('click', () => {
+  const claro = document.body.classList.toggle('claro');
+  botaoTema.textContent = claro ? 'Fundo escuro' : 'Fundo claro';
+});
+
+let ultimo = performance.now();
+function quadro(agora) {
+  const dt = Math.min(.05, (agora - ultimo) / 1000);
+  ultimo = agora;
+  for (const g of gatos) { g.atualizar(dt); g.desenhar(); }
+  requestAnimationFrame(quadro);
+}
+requestAnimationFrame(quadro);
+</script>
+</body>
+</html>

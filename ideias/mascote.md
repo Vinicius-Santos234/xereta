@@ -18,6 +18,27 @@ assimétrica torna o gato reconhecível em silhueta e não tem nada a ver com o 
 - Na pílula recolhida (~34 px), só cabem orelhas + olhos, e 2–3 bigodes ou nenhum.
 - Orelha só no contorno pode parecer buraco em tamanho pequeno.
 
+## Protótipo v1 (03/10) — `design/mascote.html`, aguardando sua aprovação
+Pedido dele: *"leva bastante como inspiração a direção artística do mochi… perceba que o mochi
+parece ter relevo, sombra, bordas… pra parecer que ele é um serzinho vivo"*. Do Mochi vieram as
+**técnicas** de render (lidas em `windows/src/mochi/engine.ts` do Coucou); o personagem é o nosso.
+
+- **Canvas 2D + molas em JS.** Resolve o "SVG ou Canvas" de baixo: Canvas, porque o volume
+  são gradientes empilhados a cada quadro.
+- **Volume em camadas:** base em diagonal (luz de cima à esquerda), cor do estado subindo de
+  baixo, sombra nas bordas, luz rebatida embaixo, brilho fixo e halo da cor do estado atrás.
+- **Vida:** olhos, nariz, bigodes e mancha andam sobre a esfera quando ele vira a cabeça, e o
+  brilho fica parado; ele segue o mouse, pisca, respira, e cada parte solta tem a própria mola.
+- **Cabeça** em superelipse, mais larga que alta e mais cheia embaixo: cara de bochecha, não de
+  bola. A primeira versão era um círculo brilhante e parecia bola de bilhar.
+- **O preto na ilha escura:** a mancha é grafite com brilho, não preto chapado, e o contorno
+  escuro suave mais o halo do estado a separam do fundo. Na pílula, ela se lê.
+- **Orelha clara** ganhou o miolo rosa, e com isso sumiu o risco de parecer buraco.
+- **Pílula:** cabem orelhas, olhos, mancha e nariz, sem bigodes. O gato espia pela borda de baixo.
+- **Bigodes** grossos na raiz e finos na ponta, creme com borda escura, para serem lidos no claro
+  e no escuro. No "feliz" viram braços para cima; no "pensando", coçam o queixo.
+- **Falta:** os gestos completos (👍, 👌, ☝️). Por enquanto os bigodes só mudam de pose e de ritmo.
+
 ## A ideia central: corpo de desenho animado, sem amarras
 As partes **soltas** (orelhas flutuantes, bigodes, olhos) se mexem cada uma por conta própria,
 de um jeito **exagerado e engraçado**, no estilo dos desenhos antigos de borracha (*rubber hose*).
