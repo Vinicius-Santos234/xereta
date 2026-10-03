@@ -1,7 +1,8 @@
 // A ilha: pílula recolhida ↔ ilha expandida, o gato e o ícone na bandeja.
-// Tudo em JS pela API do Tauri; o Rust não sabe nada disto (D2).
+// Tudo em JS pela API do Tauri; do Rust só vem o recorte da janela (D2).
 'use strict';
 
+const { invoke } = window.__TAURI__.core;
 const { getCurrentWindow, primaryMonitor, currentMonitor } = window.__TAURI__.window;
 const { LogicalSize, PhysicalPosition } = window.__TAURI__.dpi;
 const { TrayIcon } = window.__TAURI__.tray;
@@ -11,28 +12,38 @@ const { defaultWindowIcon } = window.__TAURI__.app;
 const TAMANHO = { recolhida: [140, 34], expandida: [420, 110] };
 const MARGEM_TOPO = 8;          // px lógicos entre a ilha e o topo da tela
 const ESPERA_RECOLHER = 1000;   // ms depois de o mouse sair
-const DURACAO_ANIMACAO = 220;   // um pouco mais que a transição do CSS
 
 const janela = getCurrentWindow();
 const el = document.getElementById('ilha');
 const $ = id => document.getElementById(id);
 
-// ---------- janela do tamanho da ilha (D11) ----------
-let monitor = null;
-async function ajustarJanela([largura, altura]) {
-  monitor ??= (await primaryMonitor()) ?? (await currentMonitor());
-  const esc = monitor.scaleFactor;
-  const x = monitor.position.x + Math.round((monitor.size.width - largura * esc) / 2);
-  const y = monitor.position.y + Math.round(MARGEM_TOPO * esc);
-  // as duas chamadas saem juntas para a ilha não aparecer um quadro fora do centro
-  await Promise.all([
-    janela.setPosition(new PhysicalPosition(x, y)),
-    janela.setSize(new LogicalSize(largura, altura)),
-  ]);
+// ---------- janela na forma da ilha (D11) ----------
+// A janela fica sempre do tamanho da ilha expandida, centralizada no topo, e o Rust a recorta
+// na forma da ilha: fora do recorte o clique cai no app de trás. Mover e redimensionar a
+// janela a cada hover fazia a pílula pular de lado e o WebView mostrar um quadro velho.
+const RAIO = { recolhida: 17, expandida: 28 };
+let esc = 1; // escala da janela (DPI), lida depois de posicioná-la
+
+async function posicionarJanela() {
+  const monitor = (await primaryMonitor()) ?? (await currentMonitor());
+  const m = monitor.scaleFactor;
+  const [largura, altura] = TAMANHO.expandida;
+  const x = monitor.position.x + Math.round((monitor.size.width - largura * m) / 2);
+  const y = monitor.position.y + Math.round(MARGEM_TOPO * m);
+  await janela.setSize(new LogicalSize(largura, altura));
+  await janela.setPosition(new PhysicalPosition(x, y));
+  esc = await janela.scaleFactor();
+}
+
+function recortar(forma) {
+  const [largura, altura] = TAMANHO[forma];
+  const x = (TAMANHO.expandida[0] - largura) / 2; // a ilha é centrada na janela (ilha.css)
+  const px = v => Math.round(v * esc);
+  return invoke('recortar', { x: px(x), y: 0, largura: px(largura), altura: px(altura), raio: px(RAIO[forma]) });
 }
 
 // ---------- o gato ----------
-const gatoPilula = new Gato($('gato-pilula'), { pequeno: true, raio: 16, cx: 30, cy: 25 });
+const gatoPilula = new Gato($('gato-pilula'), { pequeno: true, raio: 12, cx: 22, cy: 19 });
 const gatoIlha = new Gato($('gato-ilha'), { raio: 27, cx: 52, cy: 60 });
 gatoPilula.ativo = true;
 gatoIlha.ativo = false;
@@ -58,22 +69,35 @@ el.addEventListener('pointerleave', () => { mascote.ponteiro.ativo = false; });
 el.addEventListener('click', () => (expandida ? gatoIlha : gatoPilula).cutucar());
 
 // ---------- expandir e recolher ----------
-// Expandir: a janela cresce primeiro (é transparente), depois o CSS anima a ilha.
-// Recolher: o CSS anima, e só no fim a janela encolhe de volta.
+// Expandir: o recorte cresce primeiro (o que aparece é transparente), depois o CSS anima a ilha.
+// Recolher: o CSS anima, e só no fim o recorte volta para a pílula.
+let pronta = false; // só reage ao mouse depois do primeiro posicionamento e recorte
 let expandida = false;
 let timerRecolher = null;
 let timerFim = null;
 
+// o fim da transição do CSS, com uma folga; com "reduzir movimento" ela dura 1 ms, e o recorte
+// grande não pode ficar pegando clique depois de a ilha já ter encolhido
+function duracaoAnimacao() {
+  return parseFloat(getComputedStyle(el).getPropertyValue('--duracao')) + 20;
+}
+
 async function expandir() {
   clearTimeout(timerRecolher);
-  if (expandida) return;
+  if (!pronta || expandida) return;
   expandida = true;
   clearTimeout(timerFim);
-  await ajustarJanela(TAMANHO.expandida);
-  if (!expandida) return; // o mouse já saiu enquanto a janela crescia
+  try {
+    await recortar('expandida');
+  } catch (err) {
+    expandida = false; // sem recorte grande a ilha aberta sairia cortada: fica recolhida
+    console.error('[xereta]', err);
+    return;
+  }
+  if (!expandida) return; // o mouse já saiu enquanto o recorte crescia
   gatoIlha.ativo = true;
   el.classList.add('expandida');
-  timerFim = setTimeout(() => { if (expandida) gatoPilula.ativo = false; }, DURACAO_ANIMACAO);
+  timerFim = setTimeout(() => { if (expandida) gatoPilula.ativo = false; }, duracaoAnimacao());
 }
 
 function recolher() {
@@ -85,8 +109,8 @@ function recolher() {
   timerFim = setTimeout(() => {
     if (expandida) return;
     gatoIlha.ativo = false;
-    ajustarJanela(TAMANHO.recolhida);
-  }, DURACAO_ANIMACAO);
+    recortar('recolhida').catch(err => console.error('[xereta]', err));
+  }, duracaoAnimacao());
 }
 
 el.addEventListener('mouseenter', expandir);
@@ -160,10 +184,24 @@ function quadro(agora) {
   acumulado = 0;
 }
 
+// ---------- escala do Windows mudou com o app aberto ----------
+// Posição, recorte e canvas dependem da escala: refaz os três.
+janela.onScaleChanged(async () => {
+  await posicionarJanela();
+  await recortar(expandida ? 'expandida' : 'recolhida');
+  for (const g of [gatoPilula, gatoIlha]) { g.redimensionar(); g.desenhar(); }
+}).catch(err => console.error('[xereta]', err));
+
 // ---------- início ----------
 (async () => {
   definirEstado('parado');
-  await ajustarJanela(TAMANHO.recolhida);
+  await posicionarJanela();
+  await recortar('recolhida');
+  pronta = true;
+  // desenha a pílula já, sem esperar o laço: dois quadros a 144 Hz não bastam para o
+  // primeiro desenho dele, que vai a 30 qps
+  gatoPilula.atualizar(0);
+  gatoPilula.desenhar();
   requestAnimationFrame(quadro);
   // só mostra depois do primeiro quadro desenhado, para não piscar fundo branco (V4)
   requestAnimationFrame(() => requestAnimationFrame(() => janela.show()));

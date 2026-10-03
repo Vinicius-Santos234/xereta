@@ -1,4 +1,5 @@
-/* A janela é transparente e do tamanho exato da ilha (D11): o que não é ilha não existe. */
+/* A janela é transparente, do tamanho da ilha expandida, e recortada na forma da ilha (D11):
+   o que não é ilha não existe. */
 html, body {
   margin: 0;
   height: 100%;
@@ -31,20 +32,26 @@ html, body {
   border-radius: 28px;
 }
 
+/* As duas caras ficam centradas: a ilha cresce a partir do meio e vai revelando o conteúdo
+   parado no lugar, em vez de arrastá-lo junto com a borda esquerda. */
 .recolhida, .aberta {
   position: absolute;
   top: 0;
-  left: 0;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
-  transition: opacity calc(var(--duracao) * .7) ease;
+  transition: opacity calc(var(--duracao) * .35) ease;
 }
 .recolhida { width: 140px; height: 34px; }
 .aberta { width: 420px; height: 110px; opacity: 0; pointer-events: none; }
+/* Nunca as duas visíveis ao mesmo tempo: quem sai some logo no começo, e quem entra só
+   aparece perto do fim, com a forma já quase pronta. Senão um texto pisca por cima do outro. */
 .ilha.expandida .recolhida { opacity: 0; }
-.ilha.expandida .aberta { opacity: 1; pointer-events: auto; }
+.ilha.expandida .aberta { opacity: 1; pointer-events: auto; transition-delay: calc(var(--duracao) * .45); }
+.ilha:not(.expandida) .recolhida { transition-delay: calc(var(--duracao) * .45); }
 
-#gato-pilula { width: 56px; height: 34px; flex: none; margin-right: 2px; }
+#gato-pilula { width: 44px; height: 34px; flex: none; margin-right: 2px; }
 #texto-pilula {
   font-size: 12px;
   white-space: nowrap;

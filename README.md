@@ -7,7 +7,7 @@ Inspirado no app Coucou (visto num reel em 02/10/2026), com nome, visual e escol
 *Xereta* é um nome provisório.
 
 ## Estado
-E0 concluída (instalador de 1,33 MiB). E1 quase pronta: o gato e a ilha rodando e testados na mão; faltam as pendências anotadas na spec (gato saindo da pílula, flash na animação, revisão com o Codex).
+E0 concluída (instalador de 1,33 MiB). E1 quase pronta: o gato e a ilha rodando e testados na mão; falta decidir a meta de memória (ver a spec).
 
 | Documento | O que é |
 |---|---|

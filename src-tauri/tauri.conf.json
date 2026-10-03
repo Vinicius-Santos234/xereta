@@ -12,8 +12,8 @@
       {
         "label": "ilha",
         "title": "Xereta",
-        "width": 140,
-        "height": 34,
+        "width": 420,
+        "height": 110,
         "decorations": false,
         "transparent": true,
         "alwaysOnTop": true,

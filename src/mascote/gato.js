@@ -125,10 +125,13 @@ function desenharMao(c, nome, u, e) {
 const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
 const lerp = (a, b, t) => a + (b - a) * t;
 // quem usa o gato pode mudar estas opções (o protótipo liga o "reduzir movimento" na mão)
+const prefereMenosMovimento = matchMedia('(prefers-reduced-motion: reduce)');
 const mascote = {
-  reduzirMovimento: matchMedia('(prefers-reduced-motion: reduce)').matches,
+  reduzirMovimento: prefereMenosMovimento.matches,
   ponteiro: { x: 0, y: 0, ativo: false },
 };
+// acompanha a opção do Windows mudada com o app aberto, como o CSS já faz
+prefereMenosMovimento.addEventListener('change', ev => { mascote.reduzirMovimento = ev.matches; });
 const mov = () => (mascote.reduzirMovimento ? 0 : 1);
 
 class Mola {
@@ -211,6 +214,14 @@ class Gato {
       this.maos[s] = { gesto: null, ultimo: 'joinha', tam: new Mola(0, 300, 13), wx: new Mola(1.1, 160, 13), wy: new Mola(.1, 160, 13), ang: new Mola(0, 160, 13) };
     }
     this.olhoPulo = new Mola(0, 220, 7);
+
+    // a pílula não desenha bigodes nem mãos: as molas deles nem entram na conta
+    this.molas = [this.yaw, this.pitch, this.roll, this.amasso, this.pulo, this.chacoalho, this.olhoPulo];
+    for (const o of this.orelhas) this.molas.push(o.rot, o.ergue);
+    if (!this.op.pequeno) {
+      for (const s of [-1, 1]) { const mao = this.maos[s]; this.molas.push(mao.tam, mao.wx, mao.wy, mao.ang); }
+      for (const b of this.bigodes) this.molas.push(b.ang, b.dobra, b.comp);
+    }
 
     this.redimensionar();
     this.mudarEstado(this.op.estado, true);
@@ -310,13 +321,14 @@ class Gato {
     }
     if (e === 'pensando') { gy = .28; gp = .32; gr = -.1 + Math.sin(t * .9) * .03 * m; }
     if (e === 'trabalhando') {
+      // lendo a linha de um lado ao outro; com menos movimento, olha parado para a "tela"
       const f = (t * .55) % 1;
-      gy = f < .85 ? lerp(-.3, .3, f / .85) : lerp(.3, -.3, (f - .85) / .15);
+      gy = m ? (f < .85 ? lerp(-.3, .3, f / .85) : lerp(.3, -.3, (f - .85) / .15)) : 0;
       gp = -.18; gr = 0;
     }
     if (e === 'esperando') {
       gr = Math.sin(t * 2.2) * .035 * m;
-      if (this.tEstado % 3.2 > 2.3) { gy = .38; gp = -.05; }
+      if (m && this.tEstado % 3.2 > 2.3) { gy = .38; gp = -.05; }
     }
     if (e === 'feliz') { gy *= .3; gp = .08 + gp * .3; gr = 0; }
     if (e === 'erro') { gy *= .2; gp = -.08; gr = .07; }
@@ -397,18 +409,18 @@ class Gato {
       }
     }
 
-    // bigodes
-    for (const b of this.bigodes) {
-      const a = this.alvosBigode(b);
-      b.ang.alvo = a.ang; b.dobra.alvo = a.dobra; b.comp.alvo = a.comp; b.osc = a.osc;
-    }
-
-    // mãos
-    for (const s of [-1, 1]) {
-      const mao = this.maos[s];
-      const g = GESTOS[mao.gesto ?? mao.ultimo];
-      mao.tam.alvo = mao.gesto ? 1 : 0;
-      mao.wx.alvo = g.w[0]; mao.wy.alvo = g.w[1]; mao.ang.alvo = g.ang;
+    // bigodes e mãos (a pílula não os desenha)
+    if (!this.op.pequeno) {
+      for (const b of this.bigodes) {
+        const a = this.alvosBigode(b);
+        b.ang.alvo = a.ang; b.dobra.alvo = a.dobra; b.comp.alvo = a.comp; b.osc = a.osc;
+      }
+      for (const s of [-1, 1]) {
+        const mao = this.maos[s];
+        const g = GESTOS[mao.gesto ?? mao.ultimo];
+        mao.tam.alvo = mao.gesto ? 1 : 0;
+        mao.wx.alvo = g.w[0]; mao.wy.alvo = g.w[1]; mao.ang.alvo = g.ang;
+      }
     }
 
     // piscar
@@ -438,12 +450,8 @@ class Gato {
     this.particulas = this.particulas.filter(p => (p.vida += dt) < p.dur);
 
     // molas, em passos curtos para não explodir
-    const molas = [this.yaw, this.pitch, this.roll, this.amasso, this.pulo, this.chacoalho, this.olhoPulo];
-    for (const o of this.orelhas) molas.push(o.rot, o.ergue);
-    for (const s of [-1, 1]) { const mao = this.maos[s]; molas.push(mao.tam, mao.wx, mao.wy, mao.ang); }
-    for (const b of this.bigodes) molas.push(b.ang, b.dobra, b.comp);
     const n = Math.ceil(dt / (1 / 240));
-    for (let k = 0; k < n; k++) for (const mo of molas) mo.passo(dt / n);
+    for (let k = 0; k < n; k++) for (const mo of this.molas) mo.passo(dt / n);
   }
 
   // ---------- desenho ----------
@@ -457,7 +465,7 @@ class Gato {
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     c.clearRect(0, 0, this.w, this.h);
 
-    const pulso = cfg.pulso ? .72 + .28 * Math.sin(this.t * 4) : 1;
+    const pulso = cfg.pulso && mov() ? .72 + .28 * Math.sin(this.t * 4) : 1;
     const tremX = this.chacoalho.v * R * .06;
     const cx = this.cx, cy = this.cy;
     const y = cy + (this.pulo.v + this.balanco) * R;

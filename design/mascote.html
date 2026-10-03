@@ -64,7 +64,7 @@
     background: var(--ilha); box-shadow: 0 0 0 1px rgba(255,255,255,.07), 0 6px 18px rgba(0,0,0,.45);
     overflow: hidden; display: flex; align-items: center;
   }
-  .pilula canvas { width: 56px; height: 34px; flex: none; margin-right: 2px; }
+  .pilula canvas { width: 44px; height: 34px; flex: none; margin-right: 2px; }
   .pilula span { color: #e9e7ef; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 12px; }
   .expandida {
     position: relative; width: min(420px, 100%); min-height: 110px; border-radius: 28px;
@@ -185,7 +185,7 @@ for (const [chave, e] of Object.entries(ESTADOS)) {
   gatos.push(g);
 }
 
-const gatoPilula = new Gato(document.getElementById('gato-pilula'), { pequeno: true, raio: 16, cx: 30, cy: 25 });
+const gatoPilula = new Gato(document.getElementById('gato-pilula'), { pequeno: true, raio: 12, cx: 22, cy: 19 });
 const gatoIlha = new Gato(document.getElementById('gato-ilha'), { raio: 27, cx: 52, cy: 60 });
 gatos.push(gatoPilula, gatoIlha);
 document.getElementById('gato-ilha').addEventListener('click', () => gatoIlha.cutucar());
