@@ -7,7 +7,7 @@ Inspirado no app Coucou (visto num reel em 02/10/2026), com nome, visual e escol
 *Xereta* é um nome provisório.
 
 ## Estado
-E0 concluída (instalador de 1,33 MiB). E1 quase pronta: o gato e a ilha rodando e testados na mão; falta decidir a meta de memória (ver a spec).
+E0 concluída (instalador de 1,33 MiB). E1 concluída: o gato e a ilha rodando, testados na mão e revisados pelo Codex, com 82 MB de média parada. Próximo: E2, a ponte HTTP em Rust.
 
 | Documento | O que é |
 |---|---|

@@ -166,7 +166,10 @@ async function criarBandeja() {
 }
 
 // ---------- laço de desenho ----------
-// Recolhida, a ilha desenha a 30 quadros por segundo: ela fica aberta o dia todo.
+// Recolhida, a ilha desenha a 15 quadros por segundo: ela fica aberta o dia todo. A 30 qps, o
+// WebView2 guardava a memória de cada desenho do canvas e só a devolvia de tempos em tempos
+// (serra de ~80 a ~220 MB); a 15 qps ela fica plana. Expandida, vai no ritmo da tela.
+const QPS_RECOLHIDA = 15;
 let ultimo = performance.now();
 let acumulado = 0;
 function quadro(agora) {
@@ -175,7 +178,7 @@ function quadro(agora) {
   ultimo = agora;
   if (pausada) return;
   acumulado += dt;
-  if (!expandida && acumulado < 1 / 31) return;
+  if (!expandida && acumulado < 1 / (QPS_RECOLHIDA + .5)) return;
   for (const g of [gatoPilula, gatoIlha]) {
     if (!g.ativo) continue;
     g.atualizar(acumulado);
@@ -199,7 +202,7 @@ janela.onScaleChanged(async () => {
   await recortar('recolhida');
   pronta = true;
   // desenha a pílula já, sem esperar o laço: dois quadros a 144 Hz não bastam para o
-  // primeiro desenho dele, que vai a 30 qps
+  // primeiro desenho dele, que vai a 15 qps
   gatoPilula.atualizar(0);
   gatoPilula.desenhar();
   requestAnimationFrame(quadro);
