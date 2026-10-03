@@ -37,7 +37,13 @@ parece ter relevo, sombra, bordas… pra parecer que ele é um serzinho vivo"*. 
 - **Pílula:** cabem orelhas, olhos, mancha e nariz, sem bigodes. O gato espia pela borda de baixo.
 - **Bigodes** grossos na raiz e finos na ponta, creme com borda escura, para serem lidos no claro
   e no escuro. No "feliz" viram braços para cima; no "pensando", coçam o queixo.
-- **Falta:** os gestos completos (👍, 👌, ☝️). Por enquanto os bigodes só mudam de pose e de ritmo.
+- **Caras extras com gestos (03/10):** os três bigodes de um lado se juntam num braço e ganham
+  uma luvinha (estilo desenho de borracha, desenhada em duas passadas para ter uma borda só).
+  Prontas para usar depois: 👋 Oi! (SessionStart), 👍 Tá feito (Stop), 👌 Testes no verde
+  (com piscadela), 👉 Ó, aqui! (apontando para os botões e tamborilando com a outra mão),
+  ☝️ Você negou (olhando de lado, orelhas murchas), 🤷 Ops (erro pequeno, uma orelha cai),
+  🙈 Eita (comando perigoso, orelhas arrepiadas) e 😱 Deu muito ruim (erro grave, olhos que
+  saltam da órbita com mola). Na pílula, as mãos não aparecem.
 
 ## A ideia central: corpo de desenho animado, sem amarras
 As partes **soltas** (orelhas flutuantes, bigodes, olhos) se mexem cada uma por conta própria,

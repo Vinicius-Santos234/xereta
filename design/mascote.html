@@ -105,6 +105,10 @@
 
   <section class="grade" id="grade"></section>
 
+  <h2>Caras extras, com gestos</h2>
+  <p class="sub">Para usar depois: os três bigodes de um lado se juntam num braço e ganham uma luvinha na ponta.</p>
+  <section class="grade" id="grade-extra"></section>
+
   <h2>Na ilha</h2>
   <p class="sub">A pílula recolhida (140×34) e a ilha expandida (420×110), no tamanho real, sobre um fundo de área de trabalho.</p>
   <div class="palco">
@@ -123,7 +127,7 @@
     <li><b>Volume em camadas:</b> base em diagonal, a cor do estado subindo de baixo, sombra nas bordas, brilho fixo em cima à esquerda e um halo da cor do estado atrás.</li>
     <li><b>Cabeça que gira:</b> olhos, nariz, bigodes e a mancha andam sobre a esfera quando ele olha para os lados, mas o brilho fica parado. É isso que faz parecer 3D.</li>
     <li><b>A mancha no escuro:</b> grafite com brilho, em vez de preto chapado, contorno escuro suave e o halo do estado separando a mancha do fundo.</li>
-    <li><b>Ainda não tem:</b> os gestos completos com os bigodes (joinha, OK, "não, não"). Aqui eles só mudam de pose e de ritmo por estado.</li>
+    <li><b>Gestos:</b> nas caras extras, os três bigodes de um lado se juntam e viram o braço, e uma luvinha aparece com mola na ponta. A luva é desenhada duas vezes (contorno, depois recheio), por isso fica com uma borda só, como desenho antigo de borracha.</li>
   </ul>
 </main>
 
@@ -139,6 +143,16 @@ const ESTADOS = {
   esperando:   { rotulo: 'Esperando você', gatilho: 'PermissionRequest', fala: 'Opa! Posso?',         cor: [255, 186,  60], brilho: .45, tinta: .30, olhos: 'pidao',       orelhas: 'alerta',  bigodes: 'apontar',   pilula: 'Posso?', pulso: true },
   feliz:       { rotulo: 'Feliz',          gatilho: 'Stop',              fala: 'Prontinho!',          cor: [110, 215, 120], brilho: .40, tinta: .16, olhos: 'feliz',       orelhas: 'pular',   bigodes: 'comemorar', pilula: 'Prontinho!' },
   erro:        { rotulo: 'Erro',           gatilho: 'StopFailure',       fala: 'Deu ruim…',           cor: [255,  95,  95], brilho: .40, tinta: .25, olhos: 'esbugalhado', orelhas: 'murchar', bigodes: 'murchar',   pilula: 'Deu ruim' },
+
+  // caras extras: os bigodes viram braços e fazem gestos (gestos: lado -1 = esquerda, 1 = direita)
+  oi:          { extra: true, rotulo: 'Oi!',             gatilho: 'SessionStart',        fala: 'Opa, cheguei!',        cor: [120, 190, 255], brilho: .32, tinta: .18, olhos: 'normal',    orelhas: 'alerta',       bigodes: 'repouso', gestos: { 1: 'acenar' },                    pilula: 'Opa!' },
+  feito:       { extra: true, rotulo: 'Tá feito',        gatilho: 'Stop',                fala: 'Tá feito!',            cor: [110, 215, 120], brilho: .40, tinta: .16, olhos: 'feliz',     orelhas: 'pular',        bigodes: 'repouso', gestos: { 1: 'joinha' },                    pilula: 'Tá feito!' },
+  testes:      { extra: true, rotulo: 'Testes no verde', gatilho: 'testes passaram',     fala: 'Tudo verdinho!',       cor: [110, 215, 120], brilho: .36, tinta: .16, olhos: 'piscadela', orelhas: 'umaEmPe',      bigodes: 'repouso', gestos: { 1: 'ok' },                        pilula: 'Verdinho!' },
+  aqui:        { extra: true, rotulo: 'Ó, aqui!',        gatilho: 'PermissionRequest',   fala: 'Ó, aqui! Posso?',      cor: [255, 186,  60], brilho: .45, tinta: .30, olhos: 'pidao',     orelhas: 'alerta',       bigodes: 'repouso', gestos: { 1: 'apontar', '-1': 'tamborilar' }, pilula: 'Posso?', pulso: true },
+  negou:       { extra: true, rotulo: 'Você negou',      gatilho: 'Negar na ilha',       fala: 'Tá bom, não mexo.',    cor: [150, 175, 215], brilho: .22, tinta: .10, olhos: 'deLado',    orelhas: 'murcharDuas',  bigodes: 'repouso', gestos: { 1: 'naoNao' }, olhar: [-.34, -.06], pilula: 'Não mexo' },
+  ops:         { extra: true, rotulo: 'Ops',             gatilho: 'PostToolUseFailure',  fala: 'Ops.',                 cor: [255, 150,  90], brilho: .26, tinta: .14, olhos: 'meh',       orelhas: 'murchar',      bigodes: 'repouso', gestos: { 1: 'ombros', '-1': 'ombros' }, olhar: [0, -.1], pilula: 'Ops' },
+  eita:        { extra: true, rotulo: 'Eita',            gatilho: 'comando perigoso',    fala: 'Eita… tem certeza?',   cor: [255,  90,  60], brilho: .45, tinta: .28, olhos: 'normal',    orelhas: 'arrepiar',     bigodes: 'repouso', gestos: { 1: 'tapar', '-1': 'tapar' },     pilula: 'Eita…', pulso: true },
+  socorro:     { extra: true, rotulo: 'Deu muito ruim',  gatilho: 'StopFailure grave',   fala: 'DEU MUITO RUIM!',      cor: [255,  70,  70], brilho: .50, tinta: .30, olhos: 'saltando',  orelhas: 'arrepiar',     bigodes: 'repouso', gestos: { 1: 'bochecha', '-1': 'bochecha' }, pilula: 'Socorro!' },
 };
 
 const ILHA = {
@@ -148,7 +162,112 @@ const ILHA = {
   esperando:   { l1: 'korus · Claude Code quer rodar um comando', l2: '<code>git push origin main</code>', botoes: true },
   feliz:       { l1: 'korus', l2: 'Terminei! 3 arquivos alterados' },
   erro:        { l1: 'korus', l2: 'Deu ruim: o comando falhou' },
+  oi:          { l1: 'korus', l2: 'Nova sessão começou' },
+  feito:       { l1: 'korus', l2: 'Terminei! 3 arquivos alterados' },
+  testes:      { l1: 'korus', l2: '<code>npm test</code>: 42 passaram' },
+  aqui:        { l1: 'korus · Claude Code quer rodar um comando', l2: '<code>git push origin main</code>', botoes: true },
+  negou:       { l1: 'korus', l2: 'Pedido negado: <code>git push</code>' },
+  ops:         { l1: 'korus', l2: 'O <code>grep</code> não achou nada' },
+  eita:        { l1: 'korus · comando perigoso', l2: '<code>git push --force</code>', botoes: true },
+  socorro:     { l1: 'korus', l2: 'A sessão falhou: limite de uso' },
 };
+
+// ---------- as luvinhas ----------
+// Unidades da mão: origem no punho, dedos para cima (-y). Cada parte é uma cápsula,
+// um retângulo arredondado ou um anel; o contorno sai de desenhar tudo duas vezes.
+const PUNHO = { tipo: 'ret', x: 0, y: -.12, w: 1.3, h: .5, r: .25 };
+const MAOS = {
+  joinha: [
+    { tipo: 'ret', x: .05, y: -1, w: 1.65, h: 1.35, r: .6 },
+    { tipo: 'cap', x1: -.5, y1: -1.4, x2: -.5, y2: -2.45, w: .62 },
+    { tipo: 'vinco', x1: .1, y1: -1.3, x2: .75, y2: -1.3 },
+    { tipo: 'vinco', x1: .1, y1: -.95, x2: .75, y2: -.95 },
+    { tipo: 'vinco', x1: .1, y1: -.62, x2: .7, y2: -.62 },
+  ],
+  indicador: [
+    { tipo: 'ret', x: 0, y: -1, w: 1.6, h: 1.3, r: .6 },
+    { tipo: 'cap', x1: -.25, y1: -1.45, x2: -.25, y2: -2.85, w: .52 },
+    { tipo: 'vinco', x1: .15, y1: -1.15, x2: .72, y2: -1.15 },
+    { tipo: 'vinco', x1: .15, y1: -.8, x2: .72, y2: -.8 },
+  ],
+  ok: [
+    { tipo: 'ret', x: .1, y: -.95, w: 1.5, h: 1.25, r: .6 },
+    { tipo: 'anel', x: -.5, y: -1.95, r: .45, w: .38 },
+    { tipo: 'cap', x1: 0, y1: -1.4, x2: .1, y2: -2.65, w: .4 },
+    { tipo: 'cap', x1: .4, y1: -1.4, x2: .65, y2: -2.5, w: .4 },
+    { tipo: 'cap', x1: .75, y1: -1.25, x2: 1.15, y2: -2.15, w: .38 },
+  ],
+  palma: [
+    { tipo: 'ret', x: 0, y: -1.05, w: 1.7, h: 1.45, r: .65 },
+    { tipo: 'cap', x1: -.55, y1: -1.55, x2: -.75, y2: -2.55, w: .42 },
+    { tipo: 'cap', x1: -.18, y1: -1.65, x2: -.22, y2: -2.75, w: .42 },
+    { tipo: 'cap', x1: .2, y1: -1.65, x2: .25, y2: -2.75, w: .42 },
+    { tipo: 'cap', x1: .56, y1: -1.55, x2: .78, y2: -2.45, w: .42 },
+    { tipo: 'cap', x1: -.75, y1: -.9, x2: -1.4, y2: -1.55, w: .46 },
+  ],
+};
+
+// Onde fica o punho (em raios, a partir do centro da cabeça, para o lado direito),
+// o ângulo da mão, o tamanho e a animação de cada gesto.
+const GESTOS = {
+  joinha:     { mao: 'joinha',    w: [1.22, .02],  ang: 0,    esc: 1,    anim: t => ({ dy: Math.sin(t * TAU * 1.2) * .025 }) },
+  ok:         { mao: 'ok',        w: [1.22, -.02], ang: .12,  esc: 1,    anim: t => ({ da: Math.sin(t * TAU * .8) * .06 }) },
+  naoNao:     { mao: 'indicador', w: [1.18, -.05], ang: 0,    esc: 1,    anim: t => ({ da: Math.sin(t * TAU * 2.6) * .42 }) },
+  apontar:    { mao: 'indicador', w: [1.25, .12],  ang: 1.45, esc: 1,    anim: t => ({ dx: Math.sin(t * TAU * 2) * .035 }) },
+  tamborilar: { mao: 'palma',     w: [1.12, .34],  ang: 1.9,  esc: .8,   anim: t => ({ dy: -Math.abs(Math.sin(t * TAU * 4.5)) * .05 }) },
+  acenar:     { mao: 'palma',     w: [1.3, -.25],  ang: .15,  esc: 1,    anim: t => ({ da: Math.sin(t * TAU * 2.2) * .38 }) },
+  ombros:     { mao: 'palma',     w: [1.3, .22],   ang: 1.25, esc: .85,  anim: t => ({ dy: -Math.max(0, Math.sin(t * TAU * .8)) * .06 }) },
+  tapar:      { mao: 'palma',     w: [.42, .26],   ang: -.12, esc: 1.08, anim: t => ({ dy: Math.sin(t * TAU * 6) * .008 }) },
+  bochecha:   { mao: 'palma',     w: [.86, .5],    ang: -.32, esc: .9,  anim: t => ({ dy: Math.sin(t * TAU * 7) * .01 }) },
+};
+
+const CONTORNO = 'rgba(30,22,32,.78)';
+
+function tracarParte(c, p, u, e) {
+  c.beginPath();
+  if (p.tipo === 'cap') {
+    c.lineWidth = p.w * u + 2 * e;
+    c.moveTo(p.x1 * u, p.y1 * u);
+    c.lineTo(p.x2 * u, p.y2 * u);
+    c.stroke();
+  } else if (p.tipo === 'ret') {
+    c.roundRect((p.x - p.w / 2) * u - e, (p.y - p.h / 2) * u - e, p.w * u + 2 * e, p.h * u + 2 * e, p.r * u + e);
+    c.fill();
+  } else if (p.tipo === 'anel') {
+    c.lineWidth = p.w * u + 2 * e;
+    c.arc(p.x * u, p.y * u, p.r * u, 0, TAU);
+    c.stroke();
+  }
+}
+
+function desenharMao(c, nome, u, e) {
+  const partes = [PUNHO, ...MAOS[nome].filter(p => p.tipo !== 'vinco')];
+  c.lineCap = 'round';
+  // 1. contorno, com sombra caindo no rosto
+  c.save();
+  c.shadowColor = 'rgba(0,0,0,.28)';
+  c.shadowBlur = u * .7;
+  c.shadowOffsetY = u * .3;
+  c.fillStyle = c.strokeStyle = CONTORNO;
+  for (const p of partes) tracarParte(c, p, u, e);
+  c.restore();
+  // 2. recheio com a mesma luz da cabeça
+  const g = c.createLinearGradient(-1.6 * u, -3 * u, 1.6 * u, .4 * u);
+  g.addColorStop(0, '#fffdf8');
+  g.addColorStop(1, '#ddcfbd');
+  c.fillStyle = c.strokeStyle = g;
+  for (const p of partes) tracarParte(c, p, u, 0);
+  // 3. o punho da luva, um tom abaixo
+  c.fillStyle = '#e9dfd0';
+  tracarParte(c, PUNHO, u, 0);
+  // 4. vincos dos dedos
+  c.strokeStyle = 'rgba(30,22,32,.45)';
+  c.lineWidth = Math.max(.7, u * .09);
+  for (const p of MAOS[nome]) {
+    if (p.tipo !== 'vinco') continue;
+    c.beginPath(); c.moveTo(p.x1 * u, p.y1 * u); c.lineTo(p.x2 * u, p.y2 * u); c.stroke();
+  }
+}
 
 // ---------- utilidades ----------
 const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
@@ -231,6 +350,12 @@ class Gato {
     })));
     this.particulas = [];
     this.proxBrilho = 0;
+    // uma mão por lado: aparece com mola, e os bigodes daquele lado viram o braço
+    this.maos = {};
+    for (const s of [-1, 1]) {
+      this.maos[s] = { gesto: null, ultimo: 'joinha', tam: new Mola(0, 300, 13), wx: new Mola(1.1, 160, 13), wy: new Mola(.1, 160, 13), ang: new Mola(0, 160, 13) };
+    }
+    this.olhoPulo = new Mola(0, 220, 7);
 
     this.redimensionar();
     this.mudarEstado(this.op.estado, true);
@@ -253,12 +378,19 @@ class Gato {
     this.cfg = ESTADOS[e];
     this.tEstado = 0;
     this.proxEvento = 0.35;
+    const m = inicio ? 0 : mov();
+    for (const s of [-1, 1]) {
+      const mao = this.maos[s], novo = this.cfg.gestos?.[s] ?? null;
+      if (novo && novo !== mao.gesto) mao.tam.chute(m ? -2 : 0);
+      mao.gesto = novo;
+      if (novo) mao.ultimo = novo;
+    }
     if (inicio) return;
-    const m = mov();
     this.amasso.chute(1.2 * m);
     this.iniciarPiscada();
-    if (e === 'erro') this.chacoalho.chute(30 * m);
-    if (e === 'feliz') this.pulo.chute(-3.5 * m);
+    if (e === 'erro' || e === 'socorro') this.chacoalho.chute(30 * m);
+    if (e === 'feliz' || e === 'feito') this.pulo.chute(-3.5 * m);
+    if (e === 'socorro') this.olhoPulo.chute(9 * m);
   }
 
   cutucar() {
@@ -279,6 +411,9 @@ class Gato {
       case 'helice':  return { rot: -s * .1, ergue: .1, giro: 2.6 };
       case 'alerta':  return { rot: -s * .38, ergue: .14, giro: 0 };
       case 'murchar': return s < 0 ? { rot: -.95, ergue: -.12, giro: 0 } : { rot: .32, ergue: -.04, giro: 0 };
+      case 'murcharDuas': return { rot: s * .6, ergue: -.1, giro: 0 };
+      case 'umaEmPe': return s > 0 ? { rot: -s * .4, ergue: .16, giro: 0 } : { rot: s * .15, ergue: 0, giro: 0 };
+      case 'arrepiar': return { rot: s * .5, ergue: -.02, giro: 0 };
     }
     return { rot: 0, ergue: 0, giro: 0 };
   }
@@ -330,6 +465,11 @@ class Gato {
     }
     if (e === 'feliz') { gy *= .3; gp = .08 + gp * .3; gr = 0; }
     if (e === 'erro') { gy *= .2; gp = -.08; gr = .07; }
+    if (e === 'feito' || e === 'testes' || e === 'oi') { gy *= .4; gp = .06 + gp * .3; gr = e === 'testes' ? .06 : 0; }
+    if (e === 'aqui') { gy = .3; gp = -.04; gr = Math.sin(t * 2.2) * .03 * m; }
+    if (e === 'eita') { gy *= .15; gp = .02; gr = 0; }
+    if (e === 'socorro') { gy = 0; gp = .05; gr = 0; }
+    if (this.cfg.olhar) { [gy, gp] = this.cfg.olhar; gr = e === 'ops' ? .1 : -.05; }
     if (!m) { gy *= .5; gp *= .5; }
     this.yaw.alvo = gy; this.pitch.alvo = gp; this.roll.alvo = gr;
 
@@ -363,6 +503,28 @@ class Gato {
           this.chacoalho.chute(22 * m);
           this.proxEvento = 3.2;
           break;
+        case 'feito':
+          this.pulo.chute(-2.6 * m);
+          for (const o of this.orelhas) { o.ergue.chute(3.5 * m); o.rot.chute(-o.s * 4 * m); }
+          this.proxEvento = 1.8;
+          break;
+        case 'oi':
+          for (const o of this.orelhas) o.ergue.chute(2.5 * m);
+          this.proxEvento = 1.6;
+          break;
+        case 'ops':
+          this.pulo.chute(-1.2 * m);
+          this.proxEvento = 2.5;
+          break;
+        case 'eita':
+          this.chacoalho.chute(8 * m);
+          this.proxEvento = .9;
+          break;
+        case 'socorro':
+          this.olhoPulo.chute(9 * m);
+          this.chacoalho.chute(16 * m);
+          this.proxEvento = 1.5;
+          break;
         default:
           this.proxEvento = 1;
       }
@@ -386,6 +548,14 @@ class Gato {
       b.ang.alvo = a.ang; b.dobra.alvo = a.dobra; b.comp.alvo = a.comp; b.osc = a.osc;
     }
 
+    // mãos
+    for (const s of [-1, 1]) {
+      const mao = this.maos[s];
+      const g = GESTOS[mao.gesto ?? mao.ultimo];
+      mao.tam.alvo = mao.gesto ? 1 : 0;
+      mao.wx.alvo = g.w[0]; mao.wy.alvo = g.w[1]; mao.ang.alvo = g.ang;
+    }
+
     // piscar
     if (this.piscando < 0) {
       this.proxPiscada -= dt;
@@ -402,7 +572,7 @@ class Gato {
     }
 
     // brilhos do feliz
-    if (e === 'feliz' && m && !this.op.pequeno) {
+    if ((e === 'feliz' || e === 'feito' || e === 'testes') && m && !this.op.pequeno) {
       this.proxBrilho -= dt;
       if (this.proxBrilho <= 0) {
         const a = -Math.PI / 2 + (Math.random() - .5) * 2.6;
@@ -413,8 +583,9 @@ class Gato {
     this.particulas = this.particulas.filter(p => (p.vida += dt) < p.dur);
 
     // molas, em passos curtos para não explodir
-    const molas = [this.yaw, this.pitch, this.roll, this.amasso, this.pulo, this.chacoalho];
+    const molas = [this.yaw, this.pitch, this.roll, this.amasso, this.pulo, this.chacoalho, this.olhoPulo];
     for (const o of this.orelhas) molas.push(o.rot, o.ergue);
+    for (const s of [-1, 1]) { const mao = this.maos[s]; molas.push(mao.tam, mao.wx, mao.wy, mao.ang); }
     for (const b of this.bigodes) molas.push(b.ang, b.dobra, b.comp);
     const n = Math.ceil(dt / (1 / 240));
     for (let k = 0; k < n; k++) for (const mo of molas) mo.passo(dt / n);
@@ -540,8 +711,9 @@ class Gato {
     c.beginPath(); c.arc(0, 0, R * .22, 0, TAU); c.fill();
     c.restore();
 
-    // olhos
-    for (const s of [-1, 1]) this.desenharOlho(s, rx, ry);
+    // olhos (os que saltam da órbita são desenhados depois, fora do recorte)
+    const saltando = cfg.olhos === 'saltando';
+    if (!saltando) for (const s of [-1, 1]) this.desenharOlho(s, rx, ry);
     c.restore();
 
     // contorno
@@ -549,8 +721,10 @@ class Gato {
     c.strokeStyle = 'rgba(28,20,30,.5)';
     c.stroke(cabeca);
 
+    if (saltando) for (const s of [-1, 1]) this.desenharOlho(s, rx, ry);
     this.desenharNariz(rx, ry);
     this.desenharBigodes(rx, ry);
+    this.desenharMaos();
     if (this.estado === 'erro' && !this.op.pequeno) this.desenharSuor(rx, ry);
 
     c.restore();
@@ -582,7 +756,8 @@ class Gato {
 
   desenharOrelha(o, rx, ry) {
     const c = this.ctx, R = this.R, s = o.s;
-    const vib = this.cfg.orelhas === 'alerta' ? Math.sin(this.t * 38 + s) * .015 * mov() : 0;
+    const vib = this.cfg.orelhas === 'alerta' ? Math.sin(this.t * 38 + s) * .015 * mov()
+              : this.cfg.orelhas === 'arrepiar' ? Math.sin(this.t * 55 + s) * .06 * mov() : 0;
     const ang = s * .78 + o.rot.v + vib;
     const bx = s * .78 * rx + this.yaw.v * R * .3;
     const by = -.74 * ry - this.pitch.v * R * .2;
@@ -634,6 +809,8 @@ class Gato {
     if (tipo === 'pidao') { w *= 1.22; h *= 1.2; }
     if (tipo === 'esbugalhado') { w *= 1.42; h *= 1.42; }
     if (tipo === 'foco') h *= .55;
+    if (tipo === 'deLado') h *= .62;
+    if (tipo === 'meh') { h *= .5; w *= 1.05; }
     w *= q.fx; h *= q.fp;
     const claro = s < 0; // o olho dentro da mancha é claro, como no esboço
 
@@ -641,7 +818,30 @@ class Gato {
     c.translate(q.x, q.y);
     if (tipo === 'esbugalhado') c.translate(Math.sin(this.t * 47 + s) * R * .01 * mov(), 0);
 
-    if (tipo === 'feliz') {
+    if (tipo === 'saltando') {
+      // boing: o olho cresce, sai para fora e volta com mola
+      const k = 1 + Math.max(-.3, this.olhoPulo.v) * .35;
+      const ew = .2 * R * k * q.fx, eh = .25 * R * k;
+      c.translate(s * this.olhoPulo.v * R * .02, -Math.max(0, this.olhoPulo.v) * R * .05);
+      c.beginPath();
+      c.ellipse(0, 0, ew, eh, 0, 0, TAU);
+      const gs = c.createLinearGradient(0, -eh, 0, eh);
+      gs.addColorStop(0, claro ? '#fffaf0' : '#ffffff');
+      gs.addColorStop(1, claro ? '#ecd3a5' : '#dcd6e0');
+      c.fillStyle = gs;
+      c.fill();
+      c.lineWidth = Math.max(1, R * .03);
+      c.strokeStyle = CONTORNO;
+      c.stroke();
+      c.fillStyle = '#16111a';
+      c.beginPath(); c.arc(0, eh * .1, ew * .32, 0, TAU); c.fill();
+      c.fillStyle = 'rgba(255,255,255,.95)';
+      c.beginPath(); c.arc(-ew * .1, -eh * .05, ew * .1, 0, TAU); c.fill();
+      c.restore();
+      return;
+    }
+
+    if (tipo === 'feliz' || (tipo === 'piscadela' && !claro)) {
       c.beginPath();
       c.moveTo(-w * 1.1, h * .25);
       c.quadraticCurveTo(0, -h * 1.15, w * 1.1, h * .25);
@@ -705,10 +905,18 @@ class Gato {
       const a = bases[i] + b.ang.v + b.osc;
       const L = R * comps[i] * b.comp.v;
       const ca = Math.cos(a), sa = Math.sin(a);
-      const x1 = q.x + s * ca * L, y1 = q.y + sa * L;
+      let x1 = q.x + s * ca * L, y1 = q.y + sa * L;
       const mx = q.x + s * ca * L * .5, my = q.y + sa * L * .5;
       const curva = (.12 + b.dobra.v) * L;
-      const kx = mx - s * sa * curva, ky = my + ca * curva;
+      let kx = mx - s * sa * curva, ky = my + ca * curva;
+      // com a mão de fora, os três bigodes viram o braço e terminam no punho
+      const am = Math.max(0, Math.min(1, this.maos[s].tam.v));
+      if (am > .001) {
+        const p = this.punho(s);
+        const tx = p.x, ty = p.y + (i - 1) * R * .022;
+        x1 = lerp(x1, tx, am); y1 = lerp(y1, ty, am);
+        kx = lerp(kx, (q.x + tx) / 2, am); ky = lerp(ky, (q.y + ty) / 2 + R * .08, am);
+      }
       // contorno do bigode: grosso na raiz, fino na ponta
       const esq = [], dir = [], N = 12;
       for (let k = 0; k <= N; k++) {
@@ -740,6 +948,33 @@ class Gato {
     }
   }
 
+  punho(s) {
+    const mao = this.maos[s], g = GESTOS[mao.gesto ?? mao.ultimo];
+    const a = mov() ? g.anim(this.t) : {};
+    return {
+      x: s * (mao.wx.v + (a.dx || 0)) * this.R + this.yaw.v * this.R * .25,
+      y: (mao.wy.v + (a.dy || 0)) * this.R,
+      ang: mao.ang.v + (a.da || 0),
+    };
+  }
+
+  desenharMaos() {
+    if (this.op.pequeno) return;
+    const c = this.ctx, R = this.R;
+    for (const s of [-1, 1]) {
+      const mao = this.maos[s], tam = mao.tam.v;
+      if (tam < .02) continue;
+      const g = GESTOS[mao.gesto ?? mao.ultimo];
+      const p = this.punho(s);
+      c.save();
+      c.translate(p.x, p.y);
+      c.scale(s * tam, tam);
+      c.rotate(p.ang);
+      desenharMao(c, g.mao, R * .19 * g.esc, R * .014 / Math.max(.4, tam));
+      c.restore();
+    }
+  }
+
   desenharSuor(rx, ry) {
     const c = this.ctx, R = this.R;
     const k = (this.tEstado * .7) % 1;
@@ -767,8 +1002,8 @@ class Gato {
 
 // ---------- página ----------
 const gatos = [];
-const grade = document.getElementById('grade');
 for (const [chave, e] of Object.entries(ESTADOS)) {
+  const grade = document.getElementById(e.extra ? 'grade-extra' : 'grade');
   const cartao = document.createElement('div');
   cartao.className = 'cartao';
   cartao.innerHTML = `<canvas></canvas><h3>${e.rotulo}</h3><div class="gatilho">${e.gatilho}</div><div class="fala">“${e.fala}”</div>`;
