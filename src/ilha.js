@@ -1,5 +1,5 @@
-// A ilha: pílula recolhida ↔ ilha expandida, o gato e o ícone na bandeja.
-// Tudo em JS pela API do Tauri; do Rust só vem o recorte da janela (D2).
+// A ilha: pílula recolhida ↔ ilha expandida, o gato, o ícone na bandeja e o que as fontes
+// contam. Tudo em JS pela API do Tauri; do Rust vêm o recorte da janela e a ponte (D2).
 'use strict';
 
 const { invoke } = window.__TAURI__.core;
@@ -56,9 +56,75 @@ function definirEstado(e) {
   $('fala').textContent = t.fala;
 }
 
-$('titulo').textContent = TEXTOS.app;
-$('subtitulo').textContent = TEXTOS.ilha.modoTeste;
-$('dica').textContent = TEXTOS.ilha.dicaTeste;
+function escrever({ titulo = TEXTOS.app, subtitulo = '', pilula, fala, dica = '' }) {
+  $('titulo').textContent = titulo;
+  $('subtitulo').textContent = subtitulo;
+  if (pilula !== undefined) $('texto-pilula').textContent = pilula;
+  if (fala !== undefined) $('fala').textContent = fala;
+  $('dica').textContent = dica;
+}
+
+// a ilha sem nada para contar: o subtítulo vira "ouvindo na porta …" quando a ponte liga
+let ociosa = { subtitulo: TEXTOS.ilha.modoTeste, dica: TEXTOS.ilha.dicaTeste };
+function mostrarOciosa() {
+  definirEstado('parado');
+  escrever(ociosa);
+}
+escrever(ociosa);
+
+// ---------- o que as fontes contam (E2) ----------
+// Tipo do formato comum (§4) → cara do gato.
+const ESTADO_DO_TIPO = {
+  inicio: 'oi', pensando: 'pensando', ferramenta: 'trabalhando', permissao: 'esperando',
+  erro: 'erro', fim: 'feliz', saida: 'parado',
+};
+let ultimoStatus = null; // o último evento que não é pedido, para voltar a ele quando os pedidos acabam
+
+// O pedido que está na tela, e desde quando. Uma decisão só vale para ele, e só depois de ele
+// estar visível por um instante: um clique duplo não pode aprovar o próximo pedido, que acabou
+// de aparecer no lugar do anterior.
+const ESPERA_DECIDIR = 400; // ms
+const naTela = { id: null, desde: 0 };
+
+function decidir(decisao) {
+  if (naTela.id === null || performance.now() - naTela.desde < ESPERA_DECIDIR) return;
+  Ponte.responder(naTela.id, decisao).catch(err => console.error('[xereta]', err));
+}
+
+function mostrarEvento(evento) {
+  definirEstado(ESTADO_DO_TIPO[evento.tipo] ?? 'parado');
+  escrever({
+    titulo: evento.projeto ?? TEXTOS.app,
+    subtitulo: TEXTOS.fontes[evento.fonte] ?? evento.fonte,
+    pilula: evento.resumo,
+    fala: evento.resumo,
+  });
+}
+
+// O pedido aberto mais antigo manda na ilha; sem pedidos, vale o último status.
+function aoMudarPonte({ evento, abertos }) {
+  if (evento && evento.tipo !== 'permissao') ultimoStatus = evento;
+  const primeiro = abertos[0]?.id ?? null;
+  if (primeiro !== naTela.id) {
+    naTela.id = primeiro;
+    naTela.desde = performance.now();
+  }
+  if (abertos.length) {
+    mostrarEvento(abertos[0].evento);
+    const mais = abertos.length > 1 ? `  ${TEXTOS.ilha.maisPedidos(abertos.length - 1)}` : '';
+    $('dica').textContent = TEXTOS.ilha.dicaPedido + mais;
+  } else if (ultimoStatus) {
+    mostrarEvento(ultimoStatus);
+  } else {
+    mostrarOciosa(); // título, subtítulo e dica do pedido que acabou não podem ficar para trás
+  }
+}
+
+function mostrarErroPonte(erro) {
+  const texto = (TEXTOS.errosPonte[erro?.codigo] ?? TEXTOS.errosPonte.falha)(erro?.porta);
+  definirEstado('erro');
+  escrever({ subtitulo: '', ...texto });
+}
 
 el.addEventListener('pointermove', ev => {
   mascote.ponteiro.x = ev.clientX;
@@ -141,6 +207,17 @@ async function criarBandeja() {
     ],
   });
 
+  // até a E4 ter os botões na ilha, o pedido aberto se responde por aqui
+  const responderTeste = decisao => MenuItem.new({
+    id: `pedido:${decisao}`,
+    text: TEXTOS.bandeja[decisao === 'terminal' ? 'noTerminal' : decisao],
+    action: () => decidir(decisao),
+  });
+  const pedidoTeste = await Submenu.new({
+    text: TEXTOS.bandeja.pedidoTeste,
+    items: await Promise.all(['permitir', 'negar', 'terminal'].map(responderTeste)),
+  });
+
   const pausar = await MenuItem.new({
     id: 'pausar',
     text: TEXTOS.bandeja.pausar,
@@ -154,7 +231,7 @@ async function criarBandeja() {
   const sair = await MenuItem.new({ id: 'sair', text: TEXTOS.bandeja.sair, action: () => janela.destroy() });
 
   const menu = await Menu.new({
-    items: [estadoTeste, await PredefinedMenuItem.new({ item: 'Separator' }), pausar, sair],
+    items: [estadoTeste, pedidoTeste, await PredefinedMenuItem.new({ item: 'Separator' }), pausar, sair],
   });
   await TrayIcon.new({
     id: 'xereta',
@@ -209,4 +286,13 @@ janela.onScaleChanged(async () => {
   // só mostra depois do primeiro quadro desenhado, para não piscar fundo branco (V4)
   requestAnimationFrame(() => requestAnimationFrame(() => janela.show()));
   await criarBandeja();
+  // por último: a ponte só liga quando a ilha já sabe mostrar o que chega
+  try {
+    const porta = await Ponte.ligar(aoMudarPonte);
+    ociosa = { ...ociosa, subtitulo: TEXTOS.ilha.ouvindo(porta) };
+    $('subtitulo').textContent = ociosa.subtitulo;
+  } catch (err) {
+    console.error('[xereta] ponte', err?.codigo, err?.detalhe ?? err);
+    mostrarErroPonte(err);
+  }
 })().catch(err => console.error('[xereta]', err));

@@ -1,12 +1,13 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "A ilha: tamanho e posição da janela, bandeja e menu",
+  "description": "A ilha: só o que o código usa (janela, bandeja, menu e os avisos da ponte)",
   "windows": [
     "ilha"
   ],
   "permissions": [
-    "core:default",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
     "core:window:allow-set-size",
     "core:window:allow-set-position",
     "core:window:allow-show",
@@ -14,8 +15,12 @@
     "core:window:allow-destroy",
     "core:window:allow-primary-monitor",
     "core:window:allow-current-monitor",
-    "core:tray:default",
-    "core:menu:default",
+    "core:window:allow-scale-factor",
+    "core:tray:allow-new",
+    "core:tray:allow-get-by-id",
+    "core:menu:allow-new",
+    "core:menu:allow-set-text",
+    "core:resources:allow-close",
     "core:app:allow-default-window-icon"
   ]
 }

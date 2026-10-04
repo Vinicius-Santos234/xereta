@@ -21,6 +21,8 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = ["tray-icon"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# o token da ponte; a mesma versão que o Tauri já usa
+getrandom = "0.3"
 
 # recorte da janela (SetWindowRgn) e instância única (mutex com nome); a mesma versão e os
 # mesmos recursos que o Tauri já usa, então nada novo é compilado

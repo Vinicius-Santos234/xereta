@@ -1,4 +1,48 @@
-// Núcleo fino (D2): abre a janela e dá a ela uma forma. A ponte HTTP entra na E2.
+// Núcleo fino (D2): abre a janela, dá a ela uma forma e liga a ponte HTTP. Regra de negócio
+// fica no JS.
+
+mod config;
+mod ponte;
+
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+
+use tauri::{Emitter, Manager};
+
+use ponte::{ErroPonte, Ponte};
+
+/// A ponte, depois de ligada. Quem liga é a página, quando já está ouvindo os avisos: assim
+/// nenhum evento chega antes de ter quem o mostre.
+#[derive(Default)]
+struct PonteLigada(Mutex<Option<Ponte>>);
+
+/// Liga a ponte e devolve a porta. Chamar de novo quer dizer que a página recarregou e perdeu a
+/// lista do que mostrava: os pedidos abertos voltam vazios e caem no terminal na hora, em vez de
+/// esperar 45 s escondidos.
+#[tauri::command]
+fn ligar_ponte(app: tauri::AppHandle, estado: tauri::State<PonteLigada>) -> Result<u16, ErroPonte> {
+    let mut ligada = estado.0.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(ponte) = ligada.as_ref() {
+        ponte.encerrar_pedidos();
+        return Ok(ponte.porta());
+    }
+    let pasta = app.path().app_config_dir().map_err(|e| ErroPonte { codigo: "falha", porta: 0, detalhe: e.to_string() })?;
+    let config = config::carregar(&pasta)?;
+    let avisar = Arc::new(move |aviso| {
+        let _ = app.emit("ponte", aviso);
+    });
+    let ponte = Ponte::ligar(config.porta, &config.token, Duration::from_secs(config.espera_pedido_segundos), avisar)?;
+    let porta = ponte.porta();
+    *ligada = Some(ponte);
+    Ok(porta)
+}
+
+/// A decisão da página para o pedido `id`, já no formato da fonte. `None` = sem decisão.
+#[tauri::command]
+fn responder_pedido(estado: tauri::State<PonteLigada>, id: u64, corpo: Option<String>) -> Result<(), String> {
+    let ligada = estado.0.lock().unwrap_or_else(|e| e.into_inner());
+    ligada.as_ref().ok_or("a ponte não está ligada")?.responder(id, corpo)
+}
 
 /// Recorta a janela num retângulo arredondado (px físicos, relativos à janela).
 /// Fora do recorte a janela não desenha nem recebe clique: o clique cai no app de trás (D11).
@@ -56,7 +100,8 @@ pub fn run() {
         return;
     }
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![recortar])
+        .manage(PonteLigada::default())
+        .invoke_handler(tauri::generate_handler![recortar, ligar_ponte, responder_pedido])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Xereta");
 }
