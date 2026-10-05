@@ -3,7 +3,7 @@
 O **código** do Xereta é livre, sob a licença MIT (arquivo `LICENSE`). A **identidade** dele não
 é: o nome, o gato e o que faz o Xereta ser reconhecido como Xereta são reservados.
 
-Copyright (c) 2026 Vinicius Santos. Todos os direitos reservados sobre o que está listado abaixo.
+Copyright (c) 2026 Vinicius Gonçalves Oliveira Santos. Todos os direitos reservados sobre o que está listado abaixo.
 
 ## O que é reservado
 
