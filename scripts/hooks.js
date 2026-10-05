@@ -6,11 +6,12 @@
 // gravação em scripts/gravar.js.
 //
 // XERETA_SETTINGS e XERETA_CONFIG trocam os caminhos (para testar numa cópia).
+import { writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { contar, diffLinhas, trechos } from '../src/diff.js';
-import { FormatoInesperado, estado, instalar, remover } from '../src/hooks/mesclar.js';
+import { FormatoInesperado, chavesCriadas, estado, instalar, remover } from '../src/hooks/mesclar.js';
 import { carregar } from './classico.js';
 import { ArquivoMudou, gravar, lerOuNull, limparTemporarios, sha256 } from './gravar.js';
 
@@ -18,6 +19,8 @@ const T = carregar(['src/textos/pt-BR.js'], ['TEXTOS']).TEXTOS.instalador;
 
 const ARQ_SETTINGS = process.env.XERETA_SETTINGS ?? join(homedir(), '.claude', 'settings.json');
 const ARQ_CONFIG = process.env.XERETA_CONFIG ?? join(process.env.APPDATA ?? join(homedir(), 'AppData', 'Roaming'), 'app.xereta.ilha', 'config.json');
+// quais chaves do settings.json o próprio Xereta criou, para remover devolver o arquivo igual
+const ARQ_INSTALACAO = join(dirname(ARQ_CONFIG), 'instalacao.json');
 
 const cor = process.stdout.isTTY
   ? { verde: s => `\x1b[32m${s}\x1b[0m`, vermelho: s => `\x1b[31m${s}\x1b[0m`, cinza: s => `\x1b[90m${s}\x1b[0m` }
@@ -35,6 +38,17 @@ function lerConfig() {
   try { c = JSON.parse(texto); } catch { sair(T.configInvalida(ARQ_CONFIG)); }
   if (!Number.isInteger(c?.porta) || !/^[0-9a-f]{64}$/.test(String(c?.token))) sair(T.configInvalida(ARQ_CONFIG));
   return { porta: c.porta, token: c.token };
+}
+
+// a anotação é do Xereta, não do usuário: se estiver estragada, vale o palpite de mesclar.js
+function lerAnotacoes() {
+  try { return JSON.parse(lerOuNull(ARQ_INSTALACAO) ?? '{}') ?? {}; } catch { return {}; }
+}
+function anotar(criadas) {
+  const anotacoes = lerAnotacoes();
+  if (criadas) anotacoes[ARQ_SETTINGS] = criadas;
+  else delete anotacoes[ARQ_SETTINGS];
+  try { writeFileSync(ARQ_INSTALACAO, JSON.stringify(anotacoes, null, 2) + '\n', 'utf8'); } catch { /* sem anotação, vale o palpite */ }
 }
 
 function lerSettings() {
@@ -92,10 +106,16 @@ async function principal() {
   const config = lerConfig();
   const { texto, objeto } = lerSettings();
 
-  let novo;
+  const anotacao = lerAnotacoes()[ARQ_SETTINGS] ?? null;
+  let novo, criadas;
   try {
     if (acao === 'estado') sair(T.estado[estado(objeto, config)], 0);
-    novo = acao === 'instalar' ? instalar(objeto, config) : remover(objeto).settings;
+    if (acao === 'instalar') {
+      novo = instalar(objeto, config, anotacao);
+      criadas = chavesCriadas(objeto, anotacao);
+    } else {
+      novo = remover(objeto, anotacao).settings;
+    }
   } catch (e) {
     if (e instanceof FormatoInesperado) sair(T.formatoInesperado(e.caminho));
     throw e;
@@ -103,6 +123,8 @@ async function principal() {
 
   // nada muda no conteúdo: não grava, nem que a formatação fosse sair diferente
   if (JSON.stringify(novo) === JSON.stringify(objeto)) {
+    if (!sim && acao === 'instalar' && !anotacao) anotar(criadas); // instalado antes de existir a anotação
+    if (!sim && acao === 'remover' && anotacao) anotar(null);
     sair(acao === 'instalar' ? T.jaInstalado : T.nadaARemover, 0);
   }
 
@@ -132,6 +154,7 @@ async function principal() {
     if (e instanceof ArquivoMudou) sair(T.mudou);
     throw e;
   }
+  anotar(acao === 'instalar' ? criadas : null);
   console.log(acao === 'instalar' ? T.instalado : T.removido);
 }
 

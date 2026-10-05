@@ -121,6 +121,18 @@ test('trocar o token não mostra nem o token novo nem o antigo', () => {
   assert.ok(!troca.saida.includes(ANTIGO) && !troca.saida.includes(TOKEN));
 });
 
+test('estruturas vazias que já existiam voltam iguais, pela anotação', () => {
+  const comVazios = JSON.stringify({ model: 'opus', hooks: { Stop: [], SessionStart: [{ hooks: [{ type: 'command', command: 'vault' }] }] } }, null, 2) + '\n';
+  writeFileSync(SETTINGS, comVazios);
+  assert.equal(rodar('instalar', '--confirmar', codigoDa(rodar('instalar', '--sim').saida)).codigo, 0);
+  const anotacao = JSON.parse(readFileSync(join(pasta, 'instalacao.json'), 'utf8'))[SETTINGS];
+  assert.equal(anotacao.hooks, false);
+  assert.ok(!anotacao.eventos.includes('Stop'), 'o Stop já existia');
+  assert.equal(rodar('remover', '--confirmar', codigoDa(rodar('remover', '--sim').saida)).codigo, 0);
+  assert.equal(readFileSync(SETTINGS, 'utf8'), comVazios, 'o "Stop": [] continua lá');
+  assert.equal(JSON.parse(readFileSync(join(pasta, 'instalacao.json'), 'utf8'))[SETTINGS], undefined);
+});
+
 test('remover sem settings.json não cria arquivo', () => {
   rmSync(SETTINGS, { force: true });
   const r = rodar('remover', '--sim');

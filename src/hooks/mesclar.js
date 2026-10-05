@@ -58,9 +58,16 @@ export function grupo({ evento, rota, todasAsFerramentas }, { porta, token }) {
   return todasAsFerramentas ? { matcher: '*', hooks: [hook] } : { hooks: [hook] };
 }
 
+// `criadas` diz quais chaves o próprio Xereta criou ao instalar: { hooks: bool, eventos: [nomes] }.
+// O instalador guarda isso fora do settings.json (instalacao.json). Sem essa anotação, vale o
+// palpite: uma chave que ficou vazia porque tiramos os nossos hooks foi criada por nós.
+const anotacaoValida = c => c !== null && typeof c === 'object' && typeof c.hooks === 'boolean' &&
+  Array.isArray(c.eventos) && c.eventos.every(e => typeof e === 'string');
+
 /** Tira os hooks do Xereta. Devolve { settings, removidos }; o objeto recebido não muda. */
-export function remover(original) {
+export function remover(original, criadas = null) {
   conferir(original);
+  const anotacao = anotacaoValida(criadas) ? criadas : null;
   const settings = copiar(original);
   let removidos = 0;
   if (!settings.hooks) return { settings, removidos };
@@ -72,21 +79,31 @@ export function remover(original) {
       if (outros.length === g.hooks.length) restantes.push(g);         // grupo intocado
       else if (outros.length > 0) restantes.push({ ...g, hooks: outros }); // sobrou hook de outro
     }
-    // a chave do evento só some se fomos nós que a esvaziamos. Limitação: um evento que já
-    // existia como lista vazia ("Stop": []) também some depois de instalar e remover
-    // (depois de instalar, não há como saber que ele existia).
-    if (restantes.length === 0 && grupos.length > 0) delete settings.hooks[evento];
+    // a chave do evento só some se fomos nós que a criamos (um "Stop": [] que já existia fica)
+    const esvaziamos = restantes.length === 0 && grupos.length > 0;
+    const criadaPorNos = anotacao ? anotacao.eventos.includes(evento) : true;
+    if (esvaziamos && criadaPorNos) delete settings.hooks[evento];
     else settings.hooks[evento] = restantes;
   }
-  if (removidos > 0 && Object.keys(settings.hooks).length === 0) delete settings.hooks;
+  const hooksCriadoPorNos = anotacao ? anotacao.hooks : true;
+  if (removidos > 0 && hooksCriadoPorNos && Object.keys(settings.hooks).length === 0) delete settings.hooks;
   return { settings, removidos };
 }
 
+/** Quais chaves `instalar` vai criar (ou criou, se já há uma anotação): guardar para remover. */
+export function chavesCriadas(original, criadas = null) {
+  const { settings: base } = remover(original, criadas);
+  return {
+    hooks: base.hooks === undefined,
+    eventos: HOOKS.map(h => h.evento).filter(evento => base.hooks?.[evento] === undefined),
+  };
+}
+
 /** Põe os hooks do Xereta, trocando os antigos. Rodar duas vezes dá o mesmo resultado. */
-export function instalar(original, opcoes) {
+export function instalar(original, opcoes, criadas = null) {
   if (!/^[0-9a-f]{64}$/.test(String(opcoes.token))) throw new Error('token-invalido');
   if (!Number.isInteger(opcoes.porta) || opcoes.porta < 1 || opcoes.porta > 65535) throw new Error('porta-invalida');
-  const { settings } = remover(original);
+  const { settings } = remover(original, criadas);
   settings.hooks ??= {};
   for (const h of HOOKS) {
     settings.hooks[h.evento] ??= [];

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { FormatoInesperado, HOOKS, ehDoXereta, estado, grupo, instalar, remover } from '../src/hooks/mesclar.js';
+import { FormatoInesperado, HOOKS, chavesCriadas, ehDoXereta, estado, grupo, instalar, remover } from '../src/hooks/mesclar.js';
 
 const OPCOES = { porta: 47321, token: 'a'.repeat(64) };
 
@@ -113,4 +113,28 @@ test('estado: desligado, ligado e diferente', () => {
   // faltando um, é diferente
   delete ligado.hooks.SessionEnd;
   assert.equal(estado(ligado, OPCOES), 'diferente');
+});
+
+test('com a anotação, estruturas vazias que já existiam voltam iguais', () => {
+  for (const antes of [{ hooks: {} }, { hooks: { Stop: [] } }, { hooks: { Stop: [], UserPromptSubmit: [] } }, settingsDoVault()]) {
+    const criadas = chavesCriadas(antes);
+    const { settings } = remover(instalar(antes, OPCOES, criadas), criadas);
+    assert.equal(JSON.stringify(settings), JSON.stringify(antes), JSON.stringify(antes));
+  }
+});
+
+test('chavesCriadas: o que a instalação cria, também depois de instalada sem anotação', () => {
+  const antes = settingsDoVault();
+  const criadas = chavesCriadas(antes);
+  assert.equal(criadas.hooks, false);
+  assert.deepEqual(criadas.eventos, ['UserPromptSubmit', 'PostToolUseFailure', 'PermissionRequest', 'StopFailure', 'SessionEnd']);
+  assert.deepEqual(chavesCriadas(instalar(antes, OPCOES)), criadas);
+  assert.deepEqual(chavesCriadas({}), { hooks: true, eventos: HOOKS.map(h => h.evento) });
+});
+
+test('anotação estragada vale como sem anotação', () => {
+  const antes = settingsDoVault();
+  for (const ruim of [{}, { hooks: 'sim' }, { hooks: true, eventos: [1] }, 'x']) {
+    assert.deepEqual(remover(instalar(antes, OPCOES), ruim).settings, antes);
+  }
 });
