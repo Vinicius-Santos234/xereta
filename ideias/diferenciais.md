@@ -63,9 +63,10 @@ forks** e dezenas de PRs abertos. É muito ativo.
 
 | Ideia | Spec |
 |---|---|
-| 1. Várias fontes · 6. Central de avisos | 006 |
-| 2. Diff antes de aprovar · 3. Nível de risco · 4. "Sempre permitir" com regra visível | 003 |
-| 12. Modo foco | 005 |
+| 1. Várias fontes · 6. Central de avisos · 14. O comando `xereta` | 006 |
+| 13. Linha do tempo da sessão | 002 (D11) |
+| 2. Diff antes de aprovar · 3. Nível de risco · 4. "Sempre permitir" com regra visível · 17. Selo `+N −M` no pedido | 003 |
+| 12. Modo foco · 15. Modo apresentação · 16. Sons discretos | 005 |
 | 11. Mascote que reflete a sessão | 002 (estados novos, cansado quando o limite acaba) e F5 da 005 (cansado perto do limite) |
 | 5. Resumo e vault · 7. Voz · 8. Gesto · 9. Celular | Ainda sem spec |
 | 10. Windows e português | Já é a 001 (D16) e o jeito de todas |
@@ -100,6 +101,15 @@ estender.
 Aprovar uma vez e virar regra, sem esconder nada: a lista de regras fica visível e editável,
 como a tela de regras do Dashboard Financeiro.
 
+### 15. Modo apresentação 🟢
+*(05/10)* Em reunião ou tela compartilhada, a ilha esconde caminhos, comandos e o que parece
+token, e continua respondível. Liga pela bandeja, e sozinho quando o Windows está apresentando.
+Opção a mais: tirar a ilha das gravações de tela (`WDA_EXCLUDEFROMCAPTURE`). → **005** (D14, D15)
+
+### 17. Selo `+N −M` no pedido 🟢
+*(05/10)* O resumo do diff ao lado do nome do arquivo em todo pedido de Edit e Write, inclusive na
+pílula âmbar. É o diff do item 2 lido de relance. → **003**
+
 ---
 
 ## Integrado ao seu jeito de trabalhar
@@ -111,6 +121,15 @@ levou, com um botão que manda isso para o diário do Obsidian.
 ### 6. Central de avisos das suas automações 🟢
 Uma rota genérica (`/fontes/script`) para qualquer script seu avisar a ilha: o Faxineiro
 dizendo "movi 3 arquivos", o Agente de Notícias dizendo "briefing pronto".
+
+### 13. Linha do tempo da sessão 🟢
+*(05/10)* Clicar no cartão mostra os últimos passos com a hora (`14:30 ✓ npm test · 14:31 ✎
+auth.ts · 14:32 ✓ Prontinho!`): o que o agente fez enquanto você estava longe. → **002** (D11)
+
+### 14. O comando `xereta` 🟡
+*(05/10)* `npm run build && xereta "Build OK" --tipo sucesso`: qualquer tarefa do dia a dia avisa
+na ilha, sem escrever código. Nunca quebra o `&&`, mesmo com o Xereta fechado. É o mesmo binário
+do relé de agentes e da status line. → **006** (D2)
 
 ### 7. Voz em português 🟢
 "Terminei" e "preciso de você" falados com edge-tts, que você já usou na EV. Útil quando
@@ -138,7 +157,18 @@ Cansado quando o contexto está quase cheio, preocupado perto do limite de uso.
 ### 12. Modo foco 🟢
 Silencia tudo menos pedidos de permissão.
 
+### 16. Sons discretos 🟢
+*(05/10)* Um miadinho suave para pedido, um "plim" para pronto, um tom grave para erro, e o
+ronronar do carinho. Feitos em código, opcionais, e um clique na bandeja silencia tudo. → **005** (D11)
+
+### A personalidade do gato
+*(05/10)* Cochilo com susto ao acordar, olhar desconfiado no risco alto, caneca de café nas
+maratonas, patadinha no cursor e ronronar no carinho. Detalhes, esforço e o que já dá para
+prototipar estão em `ideias/mascote.md`. → **002** e **003**
+
 ---
 
 ## Anotações das conversas
 - 02/10 — Nome provisório *Xereta*, e várias fontes pedidas desde o começo (item 1).
+- 05/10 — Ideias trazidas por você: linha do tempo (13), comando `xereta` (14), modo
+  apresentação (15), sons (16), selo `+N −M` (17) e a personalidade do gato (em `ideias/mascote.md`).

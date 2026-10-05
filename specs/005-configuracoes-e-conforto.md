@@ -4,7 +4,8 @@
 depende da 002, 003 nem 004.
 **Origem:** os itens da v2 na §2 da 001 (iniciar com o Windows, tela cheia, atalhos), o risco
 "fica por cima de vídeo e jogo", os diferenciais 11 (gato que reflete a sessão) e 12 (modo foco) e
-`ideias/coucou-instagram.md` (P9, P12 e P13).
+`ideias/coucou-instagram.md` (P9, P12 e P13). Em 05/10 entraram o modo apresentação e os sons
+novos (`ideias/diferenciais.md`, itens 15 e 16).
 
 ---
 
@@ -46,9 +47,11 @@ modo foco, e ela só aparece se o Claude pedir permissão.
 | D8 | Iniciar com o Windows | O plugin `autostart` do Tauri, com uma caixa de marcar na janela, desligada por padrão | Já estava na v2 da 001 |
 | D9 | Movimento | "Reduzir movimento" segue o Windows (como já faz) e ganha uma opção para forçar ligado | Para quem quer o gato quieto sem mudar o Windows inteiro |
 | D10 | Atalhos de resposta (P9) | **Desligados por padrão.** Ligados, eles são registrados (`RegisterHotKey`) **só enquanto um pedido está na tela** e soltos assim que ele é respondido. Sempre uma **combinação** (nunca uma letra sozinha) e **nunca com Ctrl+Alt**, que é o AltGr do ABNT2. A tecla aparece no botão (`Permitir · Ctrl+Shift+…`). **Pedido de risco alto (003) não aceita atalho:** só clique | É o meio-termo entre o risco da §2 da 001 e o que o Coucou faz (Y e N sozinhos). Fora de um pedido, o teclado fica intocado. A combinação exata sai da V3 |
-| D11 | Som (P12) | **Três sons feitos em código** (Web Audio, sem arquivo): pedido ("opa?", duas notas), pronto (subindo) e erro (descendo, suave). Liga e desliga por tipo, com volume. Padrão: **só o som de pedido e de pergunta ligado**, a 50% | É o pedido que faz o Claude Code esperar, e quem está longe da tela precisa ouvir. Som feito em código é nosso, como o gato, e não pesa no instalador. Modo foco e tela cheia não calam o som de pedido |
-| D12 | Uso do plano (P13) | Um comando de **status line** do Xereta (o modo `status` do relé da D6 da 006, ou um comando próprio se a 006 vier depois) que lê `rate_limits` do JSON da status line, repassa à ponte por `/fontes/claude-code/evento` e imprime uma linha curta (`5 h: 42% · semana: 18%`) | Os hooks não trazem o uso; a status line traz. Hoje o seu `settings.json` **não tem status line**, então não há nada para encadear. Se um dia tiver, o comando chama a anterior e devolve o que ela imprimir |
+| D11 | Som (P12; ajustado em 05/10) | **Três sons discretos feitos em código** (Web Audio, sem arquivo): um **miadinho suave** para pedido e pergunta, um **"plim"** para pronto e um **tom grave e curto** para erro. Mais o **ronronar** do carinho (002), baixinho. Liga e desliga por tipo, com volume, e **um clique na bandeja ("Som") silencia tudo**. Padrão: **só o miadinho de pedido e pergunta ligado**, a 50% | É o pedido que faz o Claude Code esperar, e quem está longe da tela precisa ouvir. Som feito em código é nosso, como o gato, e não pesa no instalador. Modo foco e tela cheia não calam o som de pedido |
+| D12 | Uso do plano (P13) | Um comando de **status line** do Xereta (o subcomando `xereta status` do binário da D2 da 006, que esta spec traz junto se vier antes) que lê `rate_limits` do JSON da status line, repassa à ponte por `/fontes/claude-code/evento` e imprime uma linha curta (`5 h: 42% · semana: 18%`) | Os hooks não trazem o uso; a status line traz. Hoje o seu `settings.json` **não tem status line**, então não há nada para encadear. Se um dia tiver, o comando chama a anterior e devolve o que ela imprimir |
 | D13 | O gato perto do limite | Acima de **80%** na janela de 5 h, o gato fica **cansado** (o estado da 002) e a pílula mostra o percentual. Acima de 95%, o selo fica âmbar | É o diferencial 11: o gato conta o que você não está olhando |
+| D14 | Modo apresentação | Um liga/desliga na bandeja e na janela, que **também liga sozinho** quando o Windows está em modo de apresentação (a mesma consulta da D5). Com ele ligado: caminhos viram só o nome do arquivo, comandos viram só o programa ("Rodando git…"), a mensagem final da 002 e o diff da 003 ficam escondidos ("oculto no modo apresentação"), e trechos com cara de token (`sk-`, `ghp_`, `Bearer …`, sequências longas de hexadecimal ou base64) viram `•••`. Os botões continuam funcionando | Em reunião e em tela compartilhada, a ilha fica à vista de todo mundo. O pedido continua respondível, só que sem expor o que não precisa |
+| D15 | Fora das capturas de tela | Uma opção a mais, **desligada por padrão**: `SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE)`, que tira a ilha de gravações e compartilhamentos de tela (Teams, Meet, OBS) sem tirá-la da sua tela | Protege de verdade, e não só mascarando. Vem desligada porque também some das gravações que usamos para testar a animação quadro a quadro |
 
 ---
 
@@ -66,7 +69,10 @@ Comportamento      Recolher depois de [1] s
                    [ ] Modo foco: só pedidos e perguntas
                    [ ] Reduzir movimento sempre
 ──────────────────────────────────────────────
-Som                [x] Pedidos e perguntas  [ ] Pronto  [ ] Erro
+Privacidade        [ ] Modo apresentação (liga sozinho ao apresentar)
+                   [ ] Esconder a ilha de gravações e compartilhamento de tela
+──────────────────────────────────────────────
+Som                [x] Pedidos e perguntas  [ ] Pronto  [ ] Erro  [ ] Ronronar
                    Volume [====|----] 50%
 ──────────────────────────────────────────────
 Atalhos            [ ] Responder pedidos pelo teclado
@@ -118,6 +124,18 @@ hooks, com prévia.
 - Um pedido de risco alto (003) ignora o atalho.
 - Uma combinação que outro programa já usa: a janela avisa, e o atalho fica desligado.
 
+- O "Som" da bandeja silencia e devolve todos os sons com um clique.
+
+### F4b — Modo apresentação (ideia de 05/10)
+- Ligado pela bandeja: um pedido de `Edit` em `C:\Users\…\korus\.env` mostra só `.env`, um Bash
+  mostra só o programa, e a mensagem final e o diff aparecem como "oculto no modo apresentação".
+  Permitir e Negar continuam funcionando.
+- Um texto com `sk-…`, `ghp_…` ou um hexadecimal de 64 caracteres aparece como `•••` (com um teste
+  por padrão de token).
+- O PowerPoint em apresentação liga o modo sozinho, e ele desliga ao sair.
+- "Esconder de gravações" ligado: a ilha não aparece numa gravação do OBS nem num compartilhamento
+  do Teams ou do Meet, e continua na sua tela, clicável.
+
 ### F5 — Uso do plano
 - Ligar mostra a prévia do `settings.json` (`statusLine` novo), com backup e a mesma recusa da D14
   da 001. Desligar devolve o JSON igual ao de antes.
@@ -137,6 +155,7 @@ hooks, com prévia.
 | V2 | O plugin `fs` do Tauri aceita escopo de um arquivo só, fora das pastas do app? | D2. Se não aceitar, a escrita vira um comando Rust pequeno, também com caminho fixo |
 | V3 | Que combinação **não** colide com o Windows, o Chrome, o VS Code, a Xbox Game Bar e o ABNT2? | D10. Testar candidatas com `Win+Shift` e `Ctrl+Shift` antes de escolher a padrão |
 | V4 | O JSON da status line traz `rate_limits` no seu plano e no Windows (`five_hour` e `seven_day`, com `used_percentage` e `resets_at`, como lê o Coucou)? | D12. Sem isso, a F5 não tem dado |
+| V6 | O `WDA_EXCLUDEFROMCAPTURE` funciona com a janela transparente e recortada (`SetWindowRgn`) do Xereta? | D15. Exige Windows 10 2004 ou mais novo |
 | V5 | Com que frequência o Claude Code chama a status line? | O custo de abrir um processo a cada chamada (D12) |
 
 ---

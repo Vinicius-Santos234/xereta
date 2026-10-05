@@ -87,7 +87,44 @@ Os bigodes fazem **gestos**:
 | Você negou | Murchas | ☝️ "não, não" | De lado |
 | Erro pequeno | Uma orelha cai | — | Esbugalhados, rápido |
 | Erro grande | Arrepiadas | — | Saltam da órbita |
-| Comando perigoso (diferencial 3) | Para trás, arrepiadas | Tapando os olhos | Esbugalhados |
+| Comando perigoso (diferencial 3) | Coladas para trás, arrepiadas | Em guarda | **Tensos e desconfiados, olhando para o botão Permitir** *(mudou em 05/10)* |
+| Você permitiu um comando perigoso | Coladas para trás | Tapando os olhos (a cara "eita") | Fechados |
+| Cochilo *(05/10)* | Caídas, relaxadas | Luvinhas debaixo do queixo, como travesseiro | Fechados, respiração lenta |
+| Acorda num susto *(05/10)* | Em pé de uma vez | Abertas | Arregalados (~0,4 s), depois "pensando" |
+| Maratona *(05/10)* | Normais | Apoiadas na borda da ilha, segurando a caneca de café fumegante | Focados |
+| Carinho *(05/10)* | Relaxadas | Em repouso | Fechados de gosto, ronronando (vibração sutil) |
+| Patadinha *(05/10)* | Em pé, atentas | Uma luvinha dá um tapa rápido na direção do cursor | Seguindo o cursor |
+
+## Ideias de 05/10: vida e personalidade
+
+Trazidas por você em 05/10. Esforço: 🟢 pequeno · 🟡 médio · 🔴 grande.
+
+| Ideia | Quando | Spec | Esforço | Por quê do esforço |
+|---|---|---|---|---|
+| **Cochilo e susto ao acordar** | 10–15 min sem evento; acorda no próximo prompt | 002 | 🟡 | Olhos fechados e orelhas caídas já existem; a pose das luvinhas debaixo do queixo é nova |
+| **Desconfiado no risco alto** | Pedido de risco alto (regras da 003) | 003 | 🟢 | Junta peças que existem: os olhos "de lado" do "negou", a direção do olhar e as orelhas "arrepiar". Falta só mirar o botão |
+| **Caneca de café nas maratonas** | 10 passos seguidos ou mais sem `Stop` | 002 | 🟡 | Um objeto novo (a caneca com vapor) e uma pose nova das duas mãos |
+| **Patadinha no cursor** | Cursor passando rápido perto da pílula | 002 (D10) | 🟡 | O gesto é simples. O difícil é ver o cursor **fora** da ilha, que o recorte esconde; precisa ler a posição dele (V4 da 002) |
+| **Ronronar no carinho** | 3 cliques em 2 s (6 viram tonto) | 002 | 🟢 | Olhos fechados de gosto e uma vibração na mola. O som é da 005 |
+
+**O cuidado de sempre vale aqui:** tudo curto, a caneca e a patadinha nunca durante um pedido,
+patadinha no máximo uma a cada 30 s, e nada disso com "reduzir movimento".
+
+### O que já dá para prototipar em `design/mascote.html`
+
+**As cinco**, sem depender de hook, de rede ou da ilha, porque o protótipo já tem o mouse, os
+cliques e os botões de estado:
+
+| Ideia | Como simular no protótipo |
+|---|---|
+| Cochilo e susto | Um botão "cochilar" e outro "chegou prompt" (sem esperar 10 min) |
+| Desconfiado no risco alto | Um botão "Permitir" falso no cartão, para o olhar ter onde mirar |
+| Caneca de café | Um botão "maratona" |
+| Patadinha | O mouse passando rápido perto do gato **dentro da página**. No app, a mesma reação vai precisar da leitura do cursor (V4 da 002) |
+| Ronronar | Os cliques no gato que o protótipo já aceita: 3 ronrona, 6 fica tonto |
+
+Só a **patadinha** depende de algo de fora para funcionar no app (a posição do cursor fora da
+janela), e só o **som** do ronronar espera a 005. O resto é desenho e mola, dentro do `gato.js`.
 
 ## Cuidados para o absurdo não cansar
 - **Escala de exagero.** `PostToolUseFailure` acontece o tempo todo (um `grep` sem resultado

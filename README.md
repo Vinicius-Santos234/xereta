@@ -168,11 +168,11 @@ ideias/                   documentos vivos (diferenciais, mascote, concorrente)
 | Spec | O que é | Estado |
 |---|---|---|
 | [001 — MVP](specs/001-mvp.md) | A ilha, o gato, o status ao vivo e a permissão pela ilha | **Aprovada**; E3 e E4 em aberto |
-| [002 — A ilha conta a sessão](specs/002-sessao-na-ilha.md) | Passos, `+N −M`, a mensagem final, várias sessões, selo e estados novos do gato | Rascunho |
+| [002 — A ilha conta a sessão](specs/002-sessao-na-ilha.md) | Passos, `+N −M`, a mensagem final, a linha do tempo, várias sessões, selo e a personalidade do gato (cochilo, caneca, ronronar, patadinha) | Rascunho |
 | [003 — Decidir com confiança](specs/003-decidir-com-confianca.md) | **O diff no próprio pedido**, o nível de risco do comando e "sempre permitir" com a regra à vista | Rascunho |
 | [004 — Responder ao Claude](specs/004-responder-ao-claude.md) | As perguntas de múltipla escolha respondidas pela ilha | Rascunho |
-| [005 — Configurações e conforto](specs/005-configuracoes-e-conforto.md) | Janela de configurações, tela cheia, modo foco, som, atalhos e uso do plano | Rascunho |
-| [006 — Várias fontes](specs/006-varias-fontes.md) | Avisos dos seus scripts, Codex, Gemini CLI e Ollama | Rascunho |
+| [005 — Configurações e conforto](specs/005-configuracoes-e-conforto.md) | Janela de configurações, tela cheia, modo foco, modo apresentação, som, atalhos e uso do plano | Rascunho |
+| [006 — Várias fontes](specs/006-varias-fontes.md) | O comando `xereta "Build OK"` para os seus scripts, Codex, Gemini CLI e Ollama | Rascunho |
 
 | Documento vivo | O que é |
 |---|---|

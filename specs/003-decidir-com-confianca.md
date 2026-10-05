@@ -89,8 +89,17 @@ e não existe lista de regras. Nada parecido com o nível de risco apareceu.
 | Atenção | Edit/Write fora da pasta do projeto (`cwd`) | Mexe fora do projeto |
 | Atenção | `~/.claude/settings.json` | Mexe na configuração do Claude Code (e nos hooks do Xereta) |
 
-O gato acompanha: risco alto usa a cara "eita" (orelhas arrepiadas, mãos nos olhos), e atenção
-usa o "esperando" com o motivo.
+O gato acompanha (ajustado em 05/10):
+- **Risco alto:** arrepiado, com as **orelhas coladas para trás** e um **olhar tenso e
+  desconfiado na direção do botão Permitir**. O olhar leva a sua atenção para onde está o
+  perigo, em vez de tapar os olhos.
+- **Se você permitir um pedido de risco alto,** aí sim ele tapa os olhos com as luvinhas por um
+  instante (a cara "eita"), e depois segue.
+- **Atenção:** o "esperando", com o motivo escrito.
+
+**O resumo do diff sempre à vista:** todo pedido de Edit, MultiEdit ou Write traz um selo `+14 −3`
+ao lado do nome do arquivo, inclusive no pedido compacto e na pílula âmbar. O diff completo fica
+na ilha grande; o selo é o que se lê de relance.
 
 ---
 
@@ -110,13 +119,16 @@ usa o "esperando" com o motivo.
 - Write num arquivo de 2 MB, num binário e num caminho inexistente: "diff indisponível" ou
   "arquivo novo", e o pedido continua respondível.
 - Nada do diff nem do arquivo lido vai para o log.
+- O selo `+N −M` aparece em todo pedido de Edit, MultiEdit e Write, também na pílula âmbar, e bate
+  com o diff completo.
 
 ### F3 — O risco
 - `src/risco.js` com um teste para cada regra da tabela (o que deve casar **e** o que não deve:
   `rm -rf node_modules` é alto, `git push` é atenção, `npm test` é comum).
 - O risco nunca muda a resposta: um teste confere que o JSON de Permitir é idêntico com e sem
   risco.
-- Um pedido real de risco alto aparece vermelho, com motivo e o gato "eita".
+- Um pedido real de risco alto aparece vermelho, com o motivo e o gato arrepiado olhando
+  desconfiado para o Permitir. Permitir mesmo assim faz ele tapar os olhos por um instante.
 
 ### F4 — "Sempre permitir" e a lista de regras
 - Num pedido comum que traz `permission_suggestions`, a ilha mostra a regra em português, e o

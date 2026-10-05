@@ -1,7 +1,7 @@
 # Spec 006 — Várias fontes
 
 **Status:** rascunho (05/10), aguardando a sua aprovação. Pode começar logo depois da 001.
-**Origem:** o pedido de 02/10 de ter várias fontes desde o começo (D10 da 001), e os diferenciais
+**Origem:** o pedido de 02/10 de ter várias fontes desde o começo (D10 da 001), o comando `xereta` (diferencial 14, de 05/10) e os diferenciais
 1 (várias fontes) e 6 (central de avisos das suas automações).
 **Depende de:** o formato comum de evento e os adaptadores da 001, que já existem.
 
@@ -33,12 +33,12 @@ na mesma ilha, marcada como Codex.
 
 | # | Decisão | Escolha | Motivo |
 |---|---|---|---|
-| D1 | Rota dos scripts | `POST /fontes/script/evento`, com o mesmo token, e um corpo simples: `{"origem":"faxineiro","titulo":"Movi 3 arquivos","texto":"para Documentos","nivel":"info"}`. O `nivel` pode ser `info`, `ok`, `atencao` ou `erro` | É a ponte da E2 sem mudar nada no Rust. Só entra o adaptador `adaptadores/script.js` |
-| D2 | Como um script avisa | Sem programa novo: um trecho de 10 linhas para Python e outro para PowerShell, em `docs/avisar.md`, que leem o token do `config.json` | O Faxineiro é Python e roda com `pythonw`. Um `.exe` a mais para isso seria peso sem ganho |
+| D1 | Rota dos scripts | `POST /fontes/script/evento`, com o mesmo token, e um corpo simples: `{"origem":"faxineiro","titulo":"Movi 3 arquivos","texto":"para Documentos","tipo":"info"}`. O `tipo` pode ser `info`, `sucesso`, `atencao` ou `erro` | É a ponte da E2 sem mudar nada no Rust. Só entra o adaptador `adaptadores/script.js` |
+| D2 | Como um script avisa (revisto em 05/10) | **Um comando `xereta`** no PATH do usuário: `npm run build && xereta "Build OK" --tipo sucesso`, com `--texto` e `--origem` opcionais (a origem padrão é o nome da pasta). Ele lê o token do `config.json`, manda o aviso com prazo de 2 s e **sempre sai com código 0**: com o Xereta fechado, falha calado e não quebra o `&&` de ninguém. Para quem não quer depender dele, `docs/avisar.md` mantém os trechos de 10 linhas em Python e PowerShell | Torna a ilha útil para qualquer tarefa do dia a dia, sem escrever código. É **o mesmo binário pequeno** do relé (D6) e da status line (D12 da 005), com subcomandos: `xereta "…"` (avisar), `xereta gancho` e `xereta status`. Um binário, três usos |
 | D3 | Aviso não é pedido | A rota de scripts **só** aceita `evento`. Um script não pede permissão pela ilha | Pedir permissão é coisa de agente. Abrir essa porta para qualquer script é risco sem uso conhecido |
 | D4 | Codex | Os hooks em `~/.codex/hooks.json`: SessionStart, UserPromptSubmit, PreToolUse, PermissionRequest, PostToolUse, Stop e SessionEnd. Permitir e Negar sim; **"Sempre", não** (o Codex recusa `updatedPermissions`) | É o que o Coucou instala (lido no código em 05/10). O Codex pede uma confirmação dos hooks uma vez, com `/hooks` |
 | D5 | Gemini CLI | Os hooks em `~/.gemini/settings.json`: BeforeTool, AfterTool, BeforeAgent, AfterAgent, SessionStart e SessionEnd. **Só estado, sem permissão** | É o que o Coucou instala. O Gemini espera `{}` como resposta |
-| D6 | Se o agente não tiver hook `http` | Um **relé pequeno em Rust** (`xereta-gancho.exe`, no mesmo projeto), chamado como hook `command`, que repassa à ponte e devolve a resposta. **Só para as fontes que precisarem** | Quebra o "sem script no meio" da D3 da 001, mas só onde o agente não deixa outro caminho. O Claude Code continua no `http` direto. Decisão sua (V1) |
+| D6 | Se o agente não tiver hook `http` | Um **relé pequeno em Rust** (o subcomando `xereta gancho` do binário da D2, no mesmo projeto), chamado como hook `command`, que repassa à ponte e devolve a resposta. **Só para as fontes que precisarem** | Quebra o "sem script no meio" da D3 da 001, mas só onde o agente não deixa outro caminho. O Claude Code continua no `http` direto. Decisão sua (V1) |
 | D7 | Ollama | Consultar `http://127.0.0.1:11434/api/ps` a cada 5 s, **só se** a fonte estiver ligada. Mostra "modelo carregado" e "gerando" | O Ollama não manda hook: é um servidor de modelos, não um agente (item 1 de `ideias/diferenciais.md`) |
 | D8 | Instalar | Cada fonte tem o próprio liga/desliga na janela da 005, com prévia, backup e recusa se o arquivo mudou (D14 da 001), arquivo por arquivo | O cuidado com o `settings.json` do Claude Code vale para o arquivo de qualquer agente |
 | D9 | Identidade da fonte | Cada fonte tem nome e cor no cartão ("Codex" em verde, "Faxineiro" em cinza). O gato reage igual para todas | A pergunta "de quem é isto?" precisa de resposta antes do Permitir |
@@ -48,11 +48,14 @@ na mesma ilha, marcada como Codex.
 ## 4. Etapas e critérios de aceite
 
 ### F1 — Os seus scripts
-- `curl` com um aviso de cada `nivel`: a ilha mostra a origem, o título e o texto, com a cor do
+- `curl` com um aviso de cada `tipo`: a ilha mostra a origem, o título e o texto, com a cor do
   nível; o gato reage (ok = feliz, erro = erro pequeno).
-- Um aviso sem token dá `401`, e um `nivel` desconhecido vira `info`.
+- Um aviso sem token dá `401`, e um `tipo` desconhecido vira `info`.
 - Pedido em `/fontes/script/pedido`: volta vazio na hora, como uma fonte que não sabe pedir.
-- O Faxineiro e o Agente de Notícias avisam de verdade, com o trecho de `docs/avisar.md`.
+- `xereta "Build OK" --tipo sucesso` mostra o aviso na ilha; com o Xereta fechado, o comando sai
+  com código 0 em até 2 s, e `npm run build && xereta …` não quebra.
+- O instalador põe o `xereta` no PATH do usuário (sem administrador), e desinstalar o tira.
+- O Faxineiro e o Agente de Notícias avisam de verdade, pelo comando ou pelo trecho de `docs/avisar.md`.
   Com o Xereta fechado, eles continuam funcionando normalmente (o aviso falha calado).
 
 ### F2 — Codex
