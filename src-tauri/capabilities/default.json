@@ -20,6 +20,7 @@
     "core:tray:allow-get-by-id",
     "core:menu:allow-new",
     "core:menu:allow-set-text",
+    "core:menu:allow-set-enabled",
     "core:resources:allow-close",
     "core:app:allow-default-window-icon"
   ]

@@ -144,7 +144,7 @@ na ilha grande; o selo é o que se lê de relance.
 
 | # | Pergunta | Por que importa |
 |---|---|---|
-| V1 | O formato exato das `permission_suggestions` (tipo, regra, destino) no Windows, na versão instalada | Mostrar a regra em português (D8) e saber em qual arquivo ela cai (D10) |
+| V1 | O formato exato das `permission_suggestions` (tipo, regra, destino) no Windows, na versão instalada | Mostrar a regra em português (D8) e saber em qual arquivo ela cai (D10). **Em parte respondida em 05/10 (E3, 2.1.289):** para Write e Edit, a sugestão é `{"type":"setMode","mode":"acceptEdits","destination":"session"}`, ou seja, **aceitar edições nesta sessão**, e não uma regra. O botão precisa dizer isso ("Aceitar edições nesta sessão"), e não "Sempre permitir". **Bash** (visto no seu teste): `{"type":"addRules","behavior":"allow","destination":"localSettings" ou "session","rules":[{"toolName":"Read","ruleContent":"//c/Users/…/**"}]}`. Podem vir **várias opções** (gravar no `.claude/settings.local.json` do projeto, ou valer só na sessão) ou **nenhuma**. A ilha mostra cada opção com o destino em português ("neste projeto" / "só nesta sessão") e a regra, e devolve só a escolhida em `updatedPermissions`. A D10 (lista de regras) lê o `settings.local.json`, que é onde as de projeto caem |
 | V2 | A V3 da 001: os campos do `tool_input` de Edit, MultiEdit e Write no `PermissionRequest` | A F2 inteira depende disso. O código do Coucou usa `old_string`, `new_string` e `content` |
 | V3 | Uma regra gravada por `updatedPermissions` vale na sessão aberta ou só na próxima? | O critério da F4 |
 | V4 | Uma regra removida do arquivo deixa de valer na sessão aberta? | Para escrever na tela de regras o que acontece depois de remover |

@@ -76,7 +76,7 @@ escrever(ociosa);
 // Tipo do formato comum (§4) → cara do gato.
 const ESTADO_DO_TIPO = {
   inicio: 'oi', pensando: 'pensando', ferramenta: 'trabalhando', permissao: 'esperando',
-  erro: 'erro', fim: 'feliz', saida: 'parado',
+  erro: 'erro', fim: 'feliz', saida: 'parado', noTerminal: 'esperando',
 };
 let ultimoStatus = null; // o último evento que não é pedido, para voltar a ele quando os pedidos acabam
 
@@ -102,8 +102,17 @@ function mostrarEvento(evento) {
 }
 
 // O pedido aberto mais antigo manda na ilha; sem pedidos, vale o último status.
-function aoMudarPonte({ evento, abertos }) {
+function aoMudarPonte({ evento, abertos, paraOTerminal }) {
   if (evento && evento.tipo !== 'permissao') ultimoStatus = evento;
+  // um pedido que foi para o terminal não pode deixar a ilha dizendo "Escrevendo…": a sessão está
+  // parada, esperando você lá. O próximo evento da sessão substitui este.
+  // Se a sessão já andou depois do pedido (respondido no terminal, ou até terminou), o aviso de
+  // terminal chegou atrasado e não vale mais.
+  const sessaoAndou = ultimoStatus?.sessao === paraOTerminal?.sessao && ultimoStatus?.chegou > paraOTerminal?.chegou;
+  if (paraOTerminal && !sessaoAndou) {
+    ultimoStatus = { ...paraOTerminal, tipo: 'noTerminal', resumo: TEXTOS.eventos.noTerminal(paraOTerminal.resumo) };
+  }
+  atualizarBandeja(abertos);
   const primeiro = abertos[0]?.id ?? null;
   if (primeiro !== naTela.id) {
     naTela.id = primeiro;
@@ -187,6 +196,16 @@ el.addEventListener('mouseleave', () => {
 
 // ---------- bandeja ----------
 let pausada = false;
+let menuPedido = null; // o submenu de responder o pedido (até a E4)
+
+// sem pedido aberto, o submenu fica cinza: um clique nele não pode parecer que respondeu algo
+function atualizarBandeja(abertos) {
+  if (!menuPedido) return;
+  const p = abertos[0];
+  const texto = p ? TEXTOS.bandeja.pedidoAberto(p.evento.resumo) : TEXTOS.bandeja.semPedido;
+  Promise.all([menuPedido.setText(texto), menuPedido.setEnabled(Boolean(p))])
+    .catch(err => console.error('[xereta]', err));
+}
 
 async function criarBandeja() {
   // no dev, recarregar a página não pode deixar dois ícones
@@ -214,9 +233,12 @@ async function criarBandeja() {
     action: () => decidir(decisao),
   });
   const pedidoTeste = await Submenu.new({
-    text: TEXTOS.bandeja.pedidoTeste,
+    text: TEXTOS.bandeja.semPedido,
+    enabled: false,
     items: await Promise.all(['permitir', 'negar', 'terminal'].map(responderTeste)),
   });
+  menuPedido = pedidoTeste;
+  atualizarBandeja(Ponte.abertos);
 
   const pausar = await MenuItem.new({
     id: 'pausar',
@@ -245,8 +267,10 @@ async function criarBandeja() {
 // ---------- laço de desenho ----------
 // Recolhida, a ilha desenha a 15 quadros por segundo: ela fica aberta o dia todo. A 30 qps, o
 // WebView2 guardava a memória de cada desenho do canvas e só a devolvia de tempos em tempos
-// (serra de ~80 a ~220 MB); a 15 qps ela fica plana. Expandida, vai no ritmo da tela.
+// (serra de ~80 a ~220 MB); a 15 qps ela fica plana. Expandida, vai no ritmo da tela, até 60
+// qps: num monitor de 144 Hz, desenhar a cada quadro seria mais que o dobro do necessário.
 const QPS_RECOLHIDA = 15;
+const QPS_EXPANDIDA = 60;
 let ultimo = performance.now();
 let acumulado = 0;
 function quadro(agora) {
@@ -255,7 +279,7 @@ function quadro(agora) {
   ultimo = agora;
   if (pausada) return;
   acumulado += dt;
-  if (!expandida && acumulado < 1 / (QPS_RECOLHIDA + .5)) return;
+  if (acumulado < 1 / ((expandida ? QPS_EXPANDIDA : QPS_RECOLHIDA) + .5)) return;
   for (const g of [gatoPilula, gatoIlha]) {
     if (!g.ativo) continue;
     g.atualizar(acumulado);

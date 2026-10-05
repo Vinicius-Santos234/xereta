@@ -16,7 +16,11 @@ const Ponte = (() => {
     const adaptador = ADAPTADORES[fonte];
     if (!adaptador) return null;
     try {
-      return adaptador.traduzir(corpo);
+      const evento = adaptador.traduzir(corpo);
+      // a hora de chegada ordena os eventos de uma sessão (ex.: um pedido que expira depois de a
+      // sessão já ter seguido em frente)
+      if (evento) evento.chegou = performance.now();
+      return evento;
     } catch (err) {
       // só o tipo do erro: o corpo pode trazer segredo (D9)
       console.error('[xereta] adaptador', fonte, err?.name);
@@ -39,8 +43,9 @@ const Ponte = (() => {
       abertos.push({ id: aviso.id, fonte: aviso.fonte, evento });
       aoMudar({ evento, abertos });
     } else if (aviso.aviso === 'expirou') {
-      tirar(aviso.id);
-      aoMudar({ evento: null, abertos });
+      // sem decisão a tempo: o pedido seguiu para o terminal, que continua esperando você
+      const pedido = tirar(aviso.id);
+      aoMudar({ evento: null, abertos, paraOTerminal: pedido?.evento ?? null });
     }
   }
 
@@ -65,9 +70,16 @@ const Ponte = (() => {
       if (!pedido) return;
       // a tela muda junto com a fila, antes de esperar o Rust: a ilha nunca mostra um pedido que
       // já saiu da fila enquanto outra decisão pode chegar
-      aoMudar({ evento: null, abertos });
+      aoMudar({ evento: null, abertos, paraOTerminal: decisao === 'terminal' ? pedido.evento : null });
       const corpo = decisao === 'terminal' ? null : ADAPTADORES[pedido.fonte].resposta(decisao);
-      await invoke('responder_pedido', { id, corpo });
+      try {
+        await invoke('responder_pedido', { id, corpo });
+      } catch (err) {
+        // o Rust já tinha encerrado o pedido (o prazo acabou no meio do clique): a decisão não
+        // valeu, e o pedido foi para o terminal
+        aoMudar({ evento: null, abertos, paraOTerminal: pedido.evento });
+        throw err;
+      }
     },
   };
 })();

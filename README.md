@@ -7,9 +7,9 @@ Você pede *"roda os testes e faz o push"*, vai para o navegador, e a pílula no
 contando: "Rodando npm test"… até ficar amarela com `git push origin main`. Você clica em
 **Permitir** sem sair de onde está, e o gato comemora quando termina.
 
-> **Em desenvolvimento.** O MVP está na metade: a ilha, o gato e a ponte com o Claude Code já
-> rodam e estão testados; falta ligar os hooks numa sessão real (E3) e responder os pedidos pela
-> ilha (E4). Por enquanto é só para Windows. *Xereta* é um nome provisório.
+> **Em desenvolvimento.** A ilha, o gato, a ponte e os hooks já rodam com sessões reais do Claude
+> Code; falta responder os pedidos pela própria ilha (E4). Por enquanto é só para Windows.
+> *Xereta* é um nome provisório.
 
 Feito no Brasil, em português desde a primeira linha. Inspirado no app
 [Coucou](https://github.com/Louis-CFM/coucou), com código, nome, personagem e escolhas próprias.
@@ -58,10 +58,25 @@ Claude Code ── hook http ──▶  ponte em Rust (127.0.0.1:47321, com toke
 | **E0** ✅ | Ambiente e instalador | Instalador NSIS de **1,33 MiB** |
 | **E1** ✅ | A ilha (pílula ↔ expandida) e o gato em Canvas 2D com molas, 6 estados e 8 caras com gestos | **82 MB** de média parada (5 min); sem roubar foco nem clique |
 | **E2** ✅ | A ponte HTTP em Rust, que lê o HTTP ela mesma | Status em **2–5 ms**; **22 testes**; revisada pelo Codex |
-| **E3** | Instalador dos hooks e a primeira sessão real | Próxima |
-| **E4** | Permitir, Negar e No terminal pela ilha | — |
+| **E3** ✅ | Instalador dos hooks (`npm run hooks`) e a primeira sessão real | App fechado: **3–17 ms** por hook; **38 testes** em JS; revisada pelo Codex; **89,8 MB** de média parada |
+| **E4** | Permitir, Negar e No terminal pela ilha; o terminal vem para a frente | Próxima |
 
-Até a E4, um pedido aberto se responde pelo ícone na bandeja (*Pedido aberto (teste)*).
+Até a E4, um pedido aberto se responde pelo ícone na bandeja (*Pedido: …*). O terminal pergunta
+ao mesmo tempo, e vale quem responder primeiro.
+
+### Ligar ao Claude Code
+
+```powershell
+npm run hooks -- estado              # ligado, desligado ou diferente
+npm run hooks -- instalar            # mostra o diff, pergunta, faz backup e grava
+npm run hooks -- remover             # devolve o settings.json como era
+npm test                             # testes do instalador e do adaptador
+```
+
+O instalador mostra exatamente o que muda no `~/.claude/settings.json` (com o token mascarado),
+só grava depois de você confirmar, faz backup com data, grava de forma atômica e recusa se o
+arquivo mudou desde a prévia. Os seus outros hooks não são tocados. O Claude Code recarrega os
+hooks sozinho. O `SessionStart` fica de fora porque o Claude Code não aceita hook `http` nele.
 
 ---
 
