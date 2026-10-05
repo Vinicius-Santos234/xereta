@@ -101,6 +101,8 @@ usa o "esperando" com o motivo.
 - Fora do recorte, o clique cai no app de trás, também nos cantos da ilha grande.
 - **Memória parada** (média de 5 min) continua abaixo de 100 MB com a janela maior. Se passar,
   a decisão volta para você antes de seguir.
+- A ilha grande respeita o teto de 60 qps da ilha aberta (emenda de 05/10 na E3 da 001), também
+  num monitor de 144 Hz, e o recorte grande fica certo a 125% e 150% de escala.
 
 ### F2 — O diff no pedido
 - Edit, MultiEdit e Write de arquivo existente e de arquivo novo mostram o diff certo. Conferir
