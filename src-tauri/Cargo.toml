@@ -3,6 +3,7 @@ name = "xereta"
 version = "0.1.0"
 description = "Mascote que mostra o que o Claude Code está fazendo"
 authors = ["vinicius-santos234"]
+license = "MIT"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

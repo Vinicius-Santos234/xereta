@@ -49,6 +49,27 @@ forks** e dezenas de PRs abertos. É muito ativo.
   (central das *suas* automações, só em parte: o `coucou_agent` já aceita qualquer ferramenta),
   8 (gesto) e 9 (celular, com algo próximo em #118).
 
+**Revisto em 05/10, depois do Instagram do criador** (detalhes em `ideias/coucou-instagram.md`):
+- **2 ficou mais estreito:** ele já mostra o diff de cada edição ao vivo, mas o pedido de
+  permissão mostra só o comando. O diferencial é o diff **no pedido**, antes do Permitir.
+- **5 ficou mais estreito:** ele tem "resume o meu dia" no chat, com chave de API. O nosso sai dos
+  eventos, sem chave, e vai para o Obsidian.
+- **9 ganhou concorrente:** um app de iOS com widgets de status foi anunciado em 05/10.
+- **10 voltou a valer:** no Windows ele não tem instalador nem vários recursos do Mac.
+- **11 e 12 estão em parte nele:** o estado `ratelimit`, a pílula de uso do plano, Pausar e Mudo.
+- **3 e 4 seguem sem nada parecido.**
+
+**Para onde foi cada ideia (05/10, specs em rascunho):**
+
+| Ideia | Spec |
+|---|---|
+| 1. Várias fontes · 6. Central de avisos | 006 |
+| 2. Diff antes de aprovar · 3. Nível de risco · 4. "Sempre permitir" com regra visível | 003 |
+| 12. Modo foco | 005 |
+| 11. Mascote que reflete a sessão | 002 (estados novos, cansado quando o limite acaba) e F5 da 005 (cansado perto do limite) |
+| 5. Resumo e vault · 7. Voz · 8. Gesto · 9. Celular | Ainda sem spec |
+| 10. Windows e português | Já é a 001 (D16) e o jeito de todas |
+
 ---
 
 ## Já pedido por você
