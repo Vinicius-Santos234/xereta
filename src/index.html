@@ -18,6 +18,13 @@
         <div class="linha1"><b id="titulo"></b> · <span id="subtitulo"></span></div>
         <div class="linha2" id="fala"></div>
         <div class="linha3" id="dica"></div>
+        <!-- só durante um pedido de permissão (classe .pedindo na ilha) -->
+        <div class="alvo" id="alvo"></div>
+        <div class="acoes">
+          <button type="button" data-decisao="negar" id="bt-negar"></button>
+          <button type="button" data-decisao="permitir" id="bt-permitir" class="principal"></button>
+          <button type="button" data-decisao="terminal" id="bt-terminal" class="discreto"></button>
+        </div>
       </div>
     </div>
   </div>

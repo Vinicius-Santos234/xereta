@@ -25,10 +25,14 @@ serde_json = "1"
 # o token da ponte; a mesma versão que o Tauri já usa
 getrandom = "0.3"
 
-# recorte da janela (SetWindowRgn) e instância única (mutex com nome); a mesma versão e os
-# mesmos recursos que o Tauri já usa, então nada novo é compilado
+# recorte da janela (SetWindowRgn), instância única (mutex com nome) e, na E4, achar e trazer
+# para a frente a janela de quem fez um pedido (tabela TCP, processos, console, janelas)
 [target.'cfg(windows)'.dependencies]
-windows = { version = "0.62", features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_Security", "Win32_System_Threading"] }
+windows = { version = "0.62", features = [
+  "Win32_Foundation", "Win32_Graphics_Gdi", "Win32_Security", "Win32_System_Threading",
+  "Win32_NetworkManagement_IpHelper", "Win32_Networking_WinSock", "Win32_System_Diagnostics_ToolHelp",
+  "Win32_System_Console", "Win32_UI_WindowsAndMessaging",
+] }
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

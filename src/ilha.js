@@ -76,19 +76,37 @@ escrever(ociosa);
 // Tipo do formato comum (§4) → cara do gato.
 const ESTADO_DO_TIPO = {
   inicio: 'oi', pensando: 'pensando', ferramenta: 'trabalhando', permissao: 'esperando',
-  erro: 'erro', fim: 'feliz', saida: 'parado', noTerminal: 'esperando',
+  erro: 'erro', fim: 'feliz', saida: 'parado', noTerminal: 'esperando', respondido: 'trabalhando',
+  negado: 'negou', encerrado: 'parado',
 };
 let ultimoStatus = null; // o último evento que não é pedido, para voltar a ele quando os pedidos acabam
 
-// O pedido que está na tela, e desde quando. Uma decisão só vale para ele, e só depois de ele
-// estar visível por um instante: um clique duplo não pode aprovar o próximo pedido, que acabou
-// de aparecer no lugar do anterior.
-const ESPERA_DECIDIR = 400; // ms
-const naTela = { id: null, desde: 0 };
+// Como um pedido sai da tela vira o status que fica no lugar dele, até o próximo evento da sessão.
+const DEPOIS_DO_PEDIDO = {
+  // sem decisão da ilha: a sessão está parada, esperando você no terminal
+  noTerminal: e => ({ tipo: 'noTerminal', resumo: TEXTOS.eventos.noTerminal(e.resumo) }),
+  // a sessão andou depois do pedido: você respondeu no terminal
+  respondido: e => ({ tipo: 'respondido', resumo: TEXTOS.eventos.respondido(e.resumo) }),
+  // a fonte fechou a conexão (Esc, ou o Claude Code saiu): não dá para dizer o que aconteceu
+  encerrado: e => ({ tipo: 'encerrado', resumo: TEXTOS.eventos.encerrado(e.resumo) }),
+  negado: e => ({ tipo: 'negado', resumo: TEXTOS.eventos.negado(e.pedido?.alvo ?? e.resumo) }),
+  // permitido: a ferramenta vai rodar, e o resumo dela ("Rodando npm test") volta a valer
+  permitido: e => ({ tipo: 'ferramenta', resumo: e.resumo }),
+};
 
-function decidir(decisao) {
-  if (naTela.id === null || performance.now() - naTela.desde < ESPERA_DECIDIR) return;
-  Ponte.responder(naTela.id, decisao).catch(err => console.error('[xereta]', err));
+// O pedido que está na tela, e desde quando. Um clique só vale para o pedido que estava na tela
+// quando o botão foi APERTADO, e só se ele já estava visível havia um instante: apertar no pedido A
+// e soltar depois de o B tomar o lugar não aprova o B, e o segundo clique de um clique duplo
+// (o Windows aceita até 500 ms entre os dois) também não.
+const ESPERA_DECIDIR = 600; // ms
+const naTela = { id: null, desde: 0 };
+let gesto = null; // { id, valido } do botão apertado
+
+function decidir(id, decisao) {
+  // "No terminal" traz a janela do terminal para a frente antes de soltar o pedido, enquanto o
+  // Rust ainda sabe de quem ele é. Não achar a janela não impede nada.
+  const antes = decisao === 'terminal' ? invoke('trazer_janela_do_pedido', { id }).catch(() => false) : Promise.resolve();
+  antes.then(() => Ponte.responder(id, decisao)).catch(err => console.error('[xereta]', err));
 }
 
 function mostrarEvento(evento) {
@@ -101,32 +119,57 @@ function mostrarEvento(evento) {
   });
 }
 
+// o pedido na tela: "korus · quer rodar · Claude Code", o alvo e os botões
+function mostrarPedido(evento, mais) {
+  definirEstado('esperando');
+  const { verbo, alvo } = evento.pedido ?? { verbo: '', alvo: evento.resumo };
+  const fonte = TEXTOS.fontes[evento.fonte] ?? evento.fonte;
+  escrever({
+    titulo: evento.projeto ?? TEXTOS.app,
+    subtitulo: [TEXTOS.ilha.quer(verbo), fonte, mais ? TEXTOS.ilha.maisPedidos(mais) : ''].filter(Boolean).join(' · '),
+    pilula: evento.resumo,
+  });
+  $('alvo').textContent = alvo;
+  $('alvo').title = alvo;
+}
+
 // O pedido aberto mais antigo manda na ilha; sem pedidos, vale o último status.
-function aoMudarPonte({ evento, abertos, paraOTerminal }) {
+function aoMudarPonte({ evento, abertos, saiu }) {
   if (evento && evento.tipo !== 'permissao') ultimoStatus = evento;
-  // um pedido que foi para o terminal não pode deixar a ilha dizendo "Escrevendo…": a sessão está
-  // parada, esperando você lá. O próximo evento da sessão substitui este.
-  // Se a sessão já andou depois do pedido (respondido no terminal, ou até terminou), o aviso de
-  // terminal chegou atrasado e não vale mais.
-  const sessaoAndou = ultimoStatus?.sessao === paraOTerminal?.sessao && ultimoStatus?.chegou > paraOTerminal?.chegou;
-  if (paraOTerminal && !sessaoAndou) {
-    ultimoStatus = { ...paraOTerminal, tipo: 'noTerminal', resumo: TEXTOS.eventos.noTerminal(paraOTerminal.resumo) };
-  }
-  atualizarBandeja(abertos);
+  // O status que fica no lugar do pedido que saiu. Se a sessão já andou depois do pedido (até
+  // terminou), o aviso chegou atrasado e não vale mais.
+  const sessaoAndou = ultimoStatus?.sessao === saiu?.evento.sessao && ultimoStatus?.chegou > saiu?.evento.chegou;
+  if (saiu && !sessaoAndou) ultimoStatus = { ...saiu.evento, ...DEPOIS_DO_PEDIDO[saiu.como](saiu.evento) };
+
   const primeiro = abertos[0]?.id ?? null;
   if (primeiro !== naTela.id) {
     naTela.id = primeiro;
     naTela.desde = performance.now();
+    gesto = null; // um botão apertado no pedido anterior não vale para este
   }
+  el.classList.toggle('pedindo', abertos.length > 0);
   if (abertos.length) {
-    mostrarEvento(abertos[0].evento);
-    const mais = abertos.length > 1 ? `  ${TEXTOS.ilha.maisPedidos(abertos.length - 1)}` : '';
-    $('dica').textContent = TEXTOS.ilha.dicaPedido + mais;
-  } else if (ultimoStatus) {
-    mostrarEvento(ultimoStatus);
-  } else {
-    mostrarOciosa(); // título, subtítulo e dica do pedido que acabou não podem ficar para trás
+    mostrarPedido(abertos[0].evento, abertos.length - 1);
+    abrirParaOPedido();
+    return;
   }
+  if (ultimoStatus) mostrarEvento(ultimoStatus);
+  else mostrarOciosa(); // título, subtítulo e alvo do pedido que acabou não podem ficar para trás
+  if (!mouseDentro) agendarRecolher(); // a ilha só ficou aberta por causa do pedido
+}
+
+// os botões do pedido; o clique não chega ao gato (que seria cutucado)
+for (const bt of document.querySelectorAll('.acoes button')) {
+  bt.textContent = TEXTOS.ilha[{ permitir: 'permitir', negar: 'negar', terminal: 'noTerminal' }[bt.dataset.decisao]];
+  bt.addEventListener('pointerdown', () => {
+    gesto = { id: naTela.id, valido: naTela.id !== null && performance.now() - naTela.desde >= ESPERA_DECIDIR };
+  });
+  bt.addEventListener('click', ev => {
+    ev.stopPropagation();
+    const g = gesto;
+    gesto = null;
+    if (g?.valido && g.id === naTela.id) decidir(g.id, bt.dataset.decisao);
+  });
 }
 
 function mostrarErroPonte(erro) {
@@ -176,7 +219,8 @@ async function expandir() {
 }
 
 function recolher() {
-  if (!expandida) return;
+  // com um pedido na tela a ilha não recolhe: os botões sumiriam (P1, emenda da E4)
+  if (!expandida || Ponte.abertos.length) return;
   expandida = false;
   gatoPilula.ativo = true;
   el.classList.remove('expandida');
@@ -188,24 +232,21 @@ function recolher() {
   }, duracaoAnimacao());
 }
 
-el.addEventListener('mouseenter', expandir);
-el.addEventListener('mouseleave', () => {
+let mouseDentro = false;
+function agendarRecolher() {
   clearTimeout(timerRecolher);
   timerRecolher = setTimeout(recolher, ESPERA_RECOLHER);
-});
+}
+// um pedido abre a ilha sozinho, sem o mouse (e sem roubar o foco: a janela não pega foco, D13)
+function abrirParaOPedido() {
+  if (!pausada) expandir();
+}
+
+el.addEventListener('mouseenter', () => { mouseDentro = true; expandir(); });
+el.addEventListener('mouseleave', () => { mouseDentro = false; agendarRecolher(); });
 
 // ---------- bandeja ----------
 let pausada = false;
-let menuPedido = null; // o submenu de responder o pedido (até a E4)
-
-// sem pedido aberto, o submenu fica cinza: um clique nele não pode parecer que respondeu algo
-function atualizarBandeja(abertos) {
-  if (!menuPedido) return;
-  const p = abertos[0];
-  const texto = p ? TEXTOS.bandeja.pedidoAberto(p.evento.resumo) : TEXTOS.bandeja.semPedido;
-  Promise.all([menuPedido.setText(texto), menuPedido.setEnabled(Boolean(p))])
-    .catch(err => console.error('[xereta]', err));
-}
 
 async function criarBandeja() {
   // no dev, recarregar a página não pode deixar dois ícones
@@ -226,19 +267,8 @@ async function criarBandeja() {
     ],
   });
 
-  // até a E4 ter os botões na ilha, o pedido aberto se responde por aqui
-  const responderTeste = decisao => MenuItem.new({
-    id: `pedido:${decisao}`,
-    text: TEXTOS.bandeja[decisao === 'terminal' ? 'noTerminal' : decisao],
-    action: () => decidir(decisao),
-  });
-  const pedidoTeste = await Submenu.new({
-    text: TEXTOS.bandeja.semPedido,
-    enabled: false,
-    items: await Promise.all(['permitir', 'negar', 'terminal'].map(responderTeste)),
-  });
-  menuPedido = pedidoTeste;
-  atualizarBandeja(Ponte.abertos);
+  // Os pedidos se respondem só pelos botões da ilha (E4). A bandeja respondia até a E4, mas um
+  // menu aberto pode mostrar um pedido que já trocou, e o clique iria para o pedido errado.
 
   const pausar = await MenuItem.new({
     id: 'pausar',
@@ -247,13 +277,14 @@ async function criarBandeja() {
       pausada = !pausada;
       if (pausada) await janela.hide();
       else await janela.show();
+      if (!pausada && Ponte.abertos.length) abrirParaOPedido(); // chegou um pedido durante a pausa
       await pausar.setText(pausada ? TEXTOS.bandeja.mostrar : TEXTOS.bandeja.pausar);
     },
   });
   const sair = await MenuItem.new({ id: 'sair', text: TEXTOS.bandeja.sair, action: () => janela.destroy() });
 
   const menu = await Menu.new({
-    items: [estadoTeste, pedidoTeste, await PredefinedMenuItem.new({ item: 'Separator' }), pausar, sair],
+    items: [estadoTeste, await PredefinedMenuItem.new({ item: 'Separator' }), pausar, sair],
   });
   await TrayIcon.new({
     id: 'xereta',

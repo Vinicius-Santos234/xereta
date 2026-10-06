@@ -2,6 +2,7 @@
 // fica no JS.
 
 mod config;
+mod janela;
 mod ponte;
 
 use std::sync::{Arc, Mutex};
@@ -42,6 +43,17 @@ fn ligar_ponte(app: tauri::AppHandle, estado: tauri::State<PonteLigada>) -> Resu
 fn responder_pedido(estado: tauri::State<PonteLigada>, id: u64, corpo: Option<String>) -> Result<(), String> {
     let ligada = estado.0.lock().unwrap_or_else(|e| e.into_inner());
     ligada.as_ref().ok_or("a ponte não está ligada")?.responder(id, corpo)
+}
+
+/// Traz para a frente a janela de quem fez o pedido `id` (o "No terminal" da E4). Chamado antes de
+/// responder, enquanto o pedido ainda está aberto. Devolve se conseguiu; não conseguir não é erro.
+#[tauri::command]
+fn trazer_janela_do_pedido(estado: tauri::State<PonteLigada>, id: u64) -> bool {
+    let processo = {
+        let ligada = estado.0.lock().unwrap_or_else(|e| e.into_inner());
+        ligada.as_ref().and_then(|p| p.processo_do_pedido(id))
+    };
+    processo.is_some_and(janela::trazer_para_frente)
 }
 
 /// Recorta a janela num retângulo arredondado (px físicos, relativos à janela).
@@ -101,7 +113,7 @@ pub fn run() {
     }
     tauri::Builder::default()
         .manage(PonteLigada::default())
-        .invoke_handler(tauri::generate_handler![recortar, ligar_ponte, responder_pedido])
+        .invoke_handler(tauri::generate_handler![recortar, ligar_ponte, responder_pedido, trazer_janela_do_pedido])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Xereta");
 }

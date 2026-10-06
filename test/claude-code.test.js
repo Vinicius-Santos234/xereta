@@ -32,6 +32,7 @@ test('evento desconhecido é ignorado', () => {
 test('o resumo de cada ferramenta', () => {
   const casos = [
     ['Bash', { command: 'npm test' }, 'Rodando npm test'],
+    ['PowerShell', { command: 'git status', description: 'x' }, 'Rodando git status'],
     ['Read', { file_path: 'C:\\x\\src\\billing.ts' }, 'Lendo billing.ts'],
     ['Edit', { file_path: '/home/x/billing.ts' }, 'Editando billing.ts'],
     ['Write', { file_path: 'C:\\x\\novo.md' }, 'Escrevendo novo.md'],
@@ -62,6 +63,22 @@ test('campos que faltam ou vêm nulos não quebram o adaptador', () => {
   assert.equal(hook('PreToolUse', { tool_name: 'Bash', tool_input: null }).resumo, 'Rodando');
   assert.equal(A.traduzir({ hook_event_name: 'Stop' }).projeto, undefined);
   assert.equal(A.traduzir({ hook_event_name: 'Stop', cwd: 'C:\\x\\korus\\' }).projeto, 'korus');
+});
+
+test('o pedido diz o verbo e o alvo', () => {
+  const pedido = (tool_name, tool_input) => hook('PermissionRequest', { tool_name, tool_input }).pedido;
+  assert.deepEqual({ ...pedido('Bash', { command: 'git push origin main' }) }, { verbo: 'rodar', alvo: 'git push origin main' });
+  assert.deepEqual({ ...pedido('PowerShell', { command: 'git init -b main', description: 'x' }) }, { verbo: 'rodar', alvo: 'git init -b main' });
+  assert.deepEqual({ ...pedido('Bash', { command: "cat <<'EOF'\nsegredo\nEOF" }) }, { verbo: 'rodar', alvo: "cat <<'EOF' …" });
+  assert.equal(pedido('Bash', { command: 'x'.repeat(900) }).alvo.length, 500);
+  // dentro do projeto: relativo; fora: o caminho inteiro
+  assert.deepEqual({ ...pedido('Edit', { file_path: 'C:\\Users\\vinic\\projetos\\korus\\src\\billing.ts' }) }, { verbo: 'editar', alvo: 'src/billing.ts' });
+  assert.equal(pedido('Write', { file_path: 'c:/users/vinic/projetos/KORUS/.env' }).alvo, '.env');
+  assert.equal(pedido('Write', { file_path: 'C:\\Users\\vinic\\.ssh\\config' }).alvo, 'C:\\Users\\vinic\\.ssh\\config');
+  assert.equal(pedido('Write', { file_path: 'C:\\Users\\vinic\\projetos\\korus-velho\\a.txt' }).alvo, 'C:\\Users\\vinic\\projetos\\korus-velho\\a.txt', 'pasta vizinha com o mesmo começo não é o projeto');
+  assert.deepEqual({ ...pedido('FerramentaNova', {}) }, { verbo: 'usar', alvo: 'FerramentaNova' });
+  assert.doesNotThrow(() => pedido('Bash', null));
+  assert.equal(hook('PreToolUse', { tool_name: 'Bash', tool_input: { command: 'ls' } }).pedido, undefined);
 });
 
 test('a resposta de permissão é exatamente o JSON do contrato', () => {

@@ -7,9 +7,9 @@ Você pede *"roda os testes e faz o push"*, vai para o navegador, e a pílula no
 contando: "Rodando npm test"… até ficar amarela com `git push origin main`. Você clica em
 **Permitir** sem sair de onde está, e o gato comemora quando termina.
 
-> **Em desenvolvimento.** A ilha, o gato, a ponte e os hooks já rodam com sessões reais do Claude
-> Code; falta responder os pedidos pela própria ilha (E4). Por enquanto é só para Windows.
-> *Xereta* é um nome provisório.
+> **O MVP está pronto** (spec 001, E0 a E4): a ilha acompanha as sessões reais do Claude Code e
+> responde os pedidos de permissão pelos próprios botões. O próximo passo é o roteiro das specs 002
+> a 006. Por enquanto é só para Windows. *Xereta* é um nome provisório.
 
 Feito no Brasil, em português desde a primeira linha. Inspirado no app
 [Coucou](https://github.com/Louis-CFM/coucou), com código, nome, personagem e escolhas próprias.
@@ -21,7 +21,7 @@ Feito no Brasil, em português desde a primeira linha. Inspirado no app
 O Xereta fechado, travado ou com defeito **nunca** atrapalha o Claude Code. Sem resposta da
 ilha, tudo volta a ser como é hoje, com o pedido no terminal.
 
-- **Nunca permite por tempo esgotado, nunca nega em silêncio.** Sem clique em 45 s, o pedido
+- **Nunca permite por tempo esgotado, nunca nega em silêncio.** Sem clique em 15 s, o pedido
   volta para o terminal.
 - **Se o app está fechado,** a conexão é recusada na hora, e o Claude Code segue normal.
 - **Status nunca atrasa o Claude Code:** a ponte responde em 2–5 ms.
@@ -33,7 +33,7 @@ ilha, tudo volta a ser como é hoje, com o pedido no terminal.
 ```
 Claude Code ── hook http ──▶  ponte em Rust (127.0.0.1:47321, com token)
                                │  evento → responde na hora
-                               │  pedido → segura a conexão até o clique (ou 45 s)
+                               │  pedido → segura a conexão até o clique (ou 15 s)
                                ▼
                          ilha em JS ── adaptador da fonte ── estado ── gato
                                │
@@ -59,10 +59,12 @@ Claude Code ── hook http ──▶  ponte em Rust (127.0.0.1:47321, com toke
 | **E1** ✅ | A ilha (pílula ↔ expandida) e o gato em Canvas 2D com molas, 6 estados e 8 caras com gestos | **82 MB** de média parada (5 min); sem roubar foco nem clique |
 | **E2** ✅ | A ponte HTTP em Rust, que lê o HTTP ela mesma | Status em **2–5 ms**; **22 testes**; revisada pelo Codex |
 | **E3** ✅ | Instalador dos hooks (`npm run hooks`) e a primeira sessão real | App fechado: **3–17 ms** por hook; **38 testes** em JS; revisada pelo Codex; **89,8 MB** de média parada |
-| **E4** | Permitir, Negar e No terminal pela ilha; o terminal vem para a frente | Próxima |
+| **E4** ✅ | Permitir, Negar e No terminal pela ilha; o terminal vem para a frente | Ilha solta o pedido respondido no terminal; **28 testes** em Rust, **43** em JS; **84,7 MB** parada; revisada pelo Codex |
 
-Até a E4, um pedido aberto se responde pelo ícone na bandeja (*Pedido: …*). O terminal pergunta
-ao mesmo tempo, e vale quem responder primeiro.
+Um pedido de permissão abre a ilha sozinho, com o que o Claude quer fazer e três botões:
+**Negar**, **Permitir** e **No terminal** (que traz a janela do terminal para a frente). O terminal
+pergunta ao mesmo tempo, e vale quem responder primeiro; respondido lá, a ilha solta o pedido
+assim que a sessão anda. Sem resposta em 15 s, ele fica só no terminal.
 
 ### Ligar ao Claude Code
 
@@ -111,7 +113,7 @@ cargo test
 Na primeira vez, o app cria `%APPDATA%\app.xereta.ilha\config.json`:
 
 ```json
-{ "porta": 47321, "token": "<64 caracteres hexadecimais>", "esperaPedidoSegundos": 45 }
+{ "porta": 47321, "token": "<64 caracteres hexadecimais>", "esperaPedidoSegundos": 15 }
 ```
 
 O token tem 32 bytes do gerador do sistema. **Não mostre esse arquivo nem o seu
@@ -132,13 +134,13 @@ Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:$($cfg.porta)/fontes/claud
 ```
 
 A ilha mostra "korus · Claude Code · Rodando npm test". Trocando `evento` por `pedido` e o
-`hook_event_name` por `PermissionRequest`, a chamada fica esperando até você responder pela
-bandeja.
+`hook_event_name` por `PermissionRequest`, a chamada fica esperando até você responder pelos
+botões da ilha (ou até 15 s).
 
 | Rota | Resposta |
 |---|---|
 | `POST /fontes/<fonte>/evento` | `200` vazio na hora |
-| `POST /fontes/<fonte>/pedido` | Aberta até a decisão; sem decisão em 45 s, `200` vazio |
+| `POST /fontes/<fonte>/pedido` | Aberta até a decisão; sem decisão em 15 s, `200` vazio |
 | Sem token ou token errado | `401` |
 | Corpo > 10 MB · sem `Content-Length` · outra rota · outro método | `413` · `411` · `404` · `405` |
 
@@ -162,7 +164,7 @@ bandeja.
 
 ```
 src/                      a interface (JavaScript puro, sem framework)
-  index.html, ilha.css, ilha.js    a ilha, a bandeja e o recorte da janela
+  index.html, ilha.css, ilha.js    a ilha, os botões do pedido, a bandeja e o recorte da janela
   ponte.js                         recebe os avisos da ponte e guarda a fila de pedidos
   adaptadores/claude-code.js       hooks do Claude Code → formato comum (e a resposta)
   mascote/gato.js                  o gato: Canvas 2D, molas e volume em camadas
@@ -171,6 +173,7 @@ src-tauri/                o núcleo em Rust
   src/ponte.rs                     a ponte HTTP
   src/config.rs                    o config.json (token, porta, espera)
   src/lib.rs                       janela, recorte (SetWindowRgn) e instância única
+  src/janela.rs                    a janela de quem fez o pedido ("No terminal")
 design/mascote.html       protótipo do gato, com todos os estados lado a lado
 specs/                    o que construir, etapa por etapa, com critérios de aceite
 ideias/                   documentos vivos (diferenciais, mascote, concorrente)
@@ -182,7 +185,7 @@ ideias/                   documentos vivos (diferenciais, mascote, concorrente)
 
 | Spec | O que é | Estado |
 |---|---|---|
-| [001 — MVP](specs/001-mvp.md) | A ilha, o gato, o status ao vivo e a permissão pela ilha | **Aprovada**; E3 e E4 em aberto |
+| [001 — MVP](specs/001-mvp.md) | A ilha, o gato, o status ao vivo e a permissão pela ilha | **Concluída** (05/10) |
 | [002 — A ilha conta a sessão](specs/002-sessao-na-ilha.md) | Passos, `+N −M`, a mensagem final, a linha do tempo, várias sessões, selo e a personalidade do gato (cochilo, caneca, ronronar, patadinha) | Rascunho |
 | [003 — Decidir com confiança](specs/003-decidir-com-confianca.md) | **O diff no próprio pedido**, o nível de risco do comando e "sempre permitir" com a regra à vista | Rascunho |
 | [004 — Responder ao Claude](specs/004-responder-ao-claude.md) | As perguntas de múltipla escolha respondidas pela ilha | Rascunho |

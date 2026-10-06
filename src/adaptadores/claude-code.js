@@ -18,6 +18,23 @@ const ADAPTADOR_CLAUDE_CODE = (() => {
 
   const projeto = cwd => (cwd ? String(cwd).split(/[\\/]/).filter(Boolean).pop() : undefined);
 
+  // arquivo dentro do projeto: relativo a ele; fora: o caminho inteiro (mexer fora do projeto é
+  // justamente o que precisa ficar à vista)
+  const normalizar = p => String(p ?? '').replace(/\\/g, '/').replace(/\/+$/, '');
+  const caminhoNoProjeto = cwd => arquivo => {
+    const a = normalizar(arquivo), base = normalizar(cwd);
+    return base && a.toLowerCase().startsWith(base.toLowerCase() + '/') ? a.slice(base.length + 1) : String(arquivo ?? '');
+  };
+
+  // o que o pedido quer fazer: verbo e alvo (o alvo vai inteiro numa linha; a tela corta)
+  const descreverPedido = (nome, entrada, cwd) => {
+    const descrever = T.pedidos[nome];
+    const { verbo, alvo } = descrever ? descrever(entrada ?? {}, caminhoNoProjeto(cwd)) : T.pedidos.outra(nome);
+    const linhas = String(alvo).trim().split(/\r?\n/);
+    const primeira = linhas[0].length > 500 ? linhas[0].slice(0, 499) + '…' : linhas[0];
+    return { verbo, alvo: linhas.length > 1 ? `${primeira} …` : primeira };
+  };
+
   // a decisão da ilha para o `behavior` do hook; qualquer outra coisa vira "sem decisão" (D6)
   const COMPORTAMENTO = { permitir: 'allow', negar: 'deny' };
 
@@ -31,7 +48,10 @@ const ADAPTADOR_CLAUDE_CODE = (() => {
         case 'UserPromptSubmit': return evento('pensando', T.eventos.pensando);
         case 'PreToolUse': return evento('ferramenta', resumirFerramenta(h.tool_name, h.tool_input));
         case 'PostToolUseFailure': return evento('erro', T.eventos.falhou(h.tool_name));
-        case 'PermissionRequest': return evento('permissao', resumirFerramenta(h.tool_name, h.tool_input));
+        case 'PermissionRequest': return {
+          ...evento('permissao', resumirFerramenta(h.tool_name, h.tool_input)),
+          pedido: descreverPedido(h.tool_name, h.tool_input, h.cwd),
+        };
         case 'Stop': return evento('fim', T.eventos.fim);
         case 'StopFailure': return evento('erro', T.eventos.parou);
         case 'SessionEnd': return evento('saida', T.eventos.saida);

@@ -23,7 +23,7 @@ pub struct Config {
 
 impl Default for Config {
     fn default() -> Self {
-        Config { porta: 47321, token: String::new(), espera_pedido_segundos: 45 }
+        Config { porta: 47321, token: String::new(), espera_pedido_segundos: 15 }
     }
 }
 
@@ -79,7 +79,7 @@ mod testes {
     fn primeira_vez_cria_o_arquivo_com_token_e_depois_le_o_mesmo() {
         let pasta = pasta_temporaria("primeira");
         let a = carregar(&pasta).unwrap();
-        assert_eq!((a.porta, a.espera_pedido_segundos, a.token.len()), (47321, 45, 64));
+        assert_eq!((a.porta, a.espera_pedido_segundos, a.token.len()), (47321, 15, 64));
         assert_eq!(carregar(&pasta).unwrap().token, a.token);
         assert_ne!(carregar(&pasta_temporaria("outra")).unwrap().token, a.token);
     }
@@ -90,7 +90,7 @@ mod testes {
         fs::create_dir_all(&pasta).unwrap();
         fs::write(pasta.join("config.json"), r#"{ "porta": 50000 }"#).unwrap();
         let c = carregar(&pasta).unwrap();
-        assert_eq!((c.porta, c.espera_pedido_segundos, c.token.len()), (50000, 45, 64));
+        assert_eq!((c.porta, c.espera_pedido_segundos, c.token.len()), (50000, 15, 64));
     }
 
     #[test]

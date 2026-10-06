@@ -31,7 +31,17 @@ const Ponte = (() => {
   function receber(aviso) {
     if (aviso.aviso === 'evento') {
       const evento = traduzir(aviso.fonte, aviso.corpo);
-      if (evento) aoMudar({ evento, abertos });
+      if (!evento) return;
+      // A sessão andou com um pedido dela ainda aberto: ele foi respondido no terminal. Quando o
+      // terminal ganha, o Claude Code não cancela o hook (só ignora a resposta), e a conexão
+      // ficaria aberta até o prazo. O pedido sai da ilha e a conexão é liberada, sem decisão.
+      let saiu = null;
+      for (const p of abertos.filter(p => p.fonte === aviso.fonte && p.evento.sessao === evento.sessao)) {
+        tirar(p.id);
+        invoke('responder_pedido', { id: p.id, corpo: null }).catch(() => {});
+        saiu = { evento: p.evento, como: 'respondido' };
+      }
+      aoMudar({ evento, abertos, saiu });
     } else if (aviso.aviso === 'pedido') {
       const evento = traduzir(aviso.fonte, aviso.corpo);
       // fonte desconhecida ou pedido que não sabemos mostrar: devolve logo, e ele cai no terminal
@@ -42,10 +52,12 @@ const Ponte = (() => {
       evento.pedidoId = aviso.id;
       abertos.push({ id: aviso.id, fonte: aviso.fonte, evento });
       aoMudar({ evento, abertos });
-    } else if (aviso.aviso === 'expirou') {
-      // sem decisão a tempo: o pedido seguiu para o terminal, que continua esperando você
+    } else if (aviso.aviso === 'expirou' || aviso.aviso === 'desistiu') {
+      // expirou: sem decisão a tempo, o pedido seguiu para o terminal, que continua esperando você.
+      // desistiu: a fonte fechou a conexão, porque você respondeu no terminal.
       const pedido = tirar(aviso.id);
-      aoMudar({ evento: null, abertos, paraOTerminal: pedido?.evento ?? null });
+      const como = aviso.aviso === 'expirou' ? 'noTerminal' : 'encerrado';
+      aoMudar({ evento: null, abertos, saiu: pedido ? { evento: pedido.evento, como } : null });
     }
   }
 
@@ -70,14 +82,15 @@ const Ponte = (() => {
       if (!pedido) return;
       // a tela muda junto com a fila, antes de esperar o Rust: a ilha nunca mostra um pedido que
       // já saiu da fila enquanto outra decisão pode chegar
-      aoMudar({ evento: null, abertos, paraOTerminal: decisao === 'terminal' ? pedido.evento : null });
+      const como = { permitir: 'permitido', negar: 'negado', terminal: 'noTerminal' }[decisao];
+      aoMudar({ evento: null, abertos, saiu: { evento: pedido.evento, como } });
       const corpo = decisao === 'terminal' ? null : ADAPTADORES[pedido.fonte].resposta(decisao);
       try {
         await invoke('responder_pedido', { id, corpo });
       } catch (err) {
         // o Rust já tinha encerrado o pedido (o prazo acabou no meio do clique): a decisão não
         // valeu, e o pedido foi para o terminal
-        aoMudar({ evento: null, abertos, paraOTerminal: pedido.evento });
+        aoMudar({ evento: null, abertos, saiu: { evento: pedido.evento, como: 'noTerminal' } });
         throw err;
       }
     },

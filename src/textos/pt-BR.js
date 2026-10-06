@@ -15,19 +15,29 @@ const TEXTOS = {
     pausar: 'Pausar',
     mostrar: 'Mostrar',
     sair: 'Sair',
-    pedidoTeste: 'Pedido aberto (teste)',
-    pedidoAberto: resumo => `Pedido: ${resumo.length > 40 ? resumo.slice(0, 39) + '…' : resumo}`,
-    permitir: 'Permitir',
-    negar: 'Negar',
-    noTerminal: 'No terminal',
-    semPedido: 'Nenhum pedido aberto',
   },
   ilha: {
     modoTeste: 'modo de teste',
     dicaTeste: 'Troque o estado pelo ícone na bandeja.',
     ouvindo: porta => `ouvindo na porta ${porta}`,
-    dicaPedido: 'Responda pelo ícone na bandeja (teste).',
     maisPedidos: n => `+${n}`,
+    quer: verbo => `quer ${verbo}`,
+    permitir: 'Permitir',
+    negar: 'Negar',
+    noTerminal: 'No terminal',
+  },
+  // o que um pedido de permissão quer fazer: o verbo e o alvo (comando, arquivo, endereço).
+  // `caminho` mostra o arquivo relativo ao projeto, ou completo quando ele está fora do projeto.
+  pedidos: {
+    Bash: (e, caminho) => ({ verbo: 'rodar', alvo: e.command ?? '' }),
+    PowerShell: (e, caminho) => ({ verbo: 'rodar', alvo: e.command ?? '' }),
+    Edit: (e, caminho) => ({ verbo: 'editar', alvo: caminho(e.file_path) }),
+    MultiEdit: (e, caminho) => ({ verbo: 'editar', alvo: caminho(e.file_path) }),
+    Write: (e, caminho) => ({ verbo: 'escrever', alvo: caminho(e.file_path) }),
+    NotebookEdit: (e, caminho) => ({ verbo: 'editar', alvo: caminho(e.notebook_path) }),
+    WebFetch: e => ({ verbo: 'abrir', alvo: hostDaUrl(e.url) }),
+    WebSearch: e => ({ verbo: 'pesquisar', alvo: e.query ?? '' }),
+    outra: nome => ({ verbo: 'usar', alvo: nome }),
   },
   // o instalador dos hooks (npm run hooks), que roda no terminal
   instalador: {
@@ -66,6 +76,7 @@ const TEXTOS = {
   // resumo do que a ferramenta está fazendo, por nome de ferramenta
   ferramentas: {
     Bash: e => `Rodando ${e.command ?? ''}`,
+    PowerShell: e => `Rodando ${e.command ?? ''}`,
     Read: e => `Lendo ${nomeDoArquivo(e.file_path)}`,
     Edit: e => `Editando ${nomeDoArquivo(e.file_path)}`,
     MultiEdit: e => `Editando ${nomeDoArquivo(e.file_path)}`,
@@ -84,6 +95,9 @@ const TEXTOS = {
     pensando: 'Pensando…',
     falhou: nome => `${nome} falhou`,
     noTerminal: resumo => `No terminal: ${resumo}`,
+    respondido: resumo => `Respondido no terminal: ${resumo}`,
+    encerrado: resumo => `Encerrado no terminal: ${resumo}`,
+    negado: alvo => `Negado: ${alvo}`,
     fim: 'Prontinho!',
     parou: 'Parou com erro',
     saida: 'Sessão encerrada',

@@ -43,6 +43,9 @@ pub enum Aviso {
     Pedido { id: u64, fonte: String, corpo: Value },
     /// O tempo do pedido acabou e a fonte recebeu 200 vazio: a página tira o pedido da tela.
     Expirou { id: u64 },
+    /// A fonte fechou a conexão antes da decisão (por exemplo, a pergunta foi respondida por outro lugar).
+    /// A página tira o pedido da tela; não há mais para quem responder.
+    Desistiu { id: u64 },
 }
 
 pub type Avisar = Arc<dyn Fn(Aviso) + Send + Sync>;
@@ -55,8 +58,14 @@ pub struct ErroPonte {
     pub detalhe: String,
 }
 
-/// Pedidos abertos: o id e por onde mandar a decisão (`None` = sem decisão).
-type Pedidos = Arc<Mutex<HashMap<u64, mpsc::Sender<Option<String>>>>>;
+/// Um pedido aberto: por onde mandar a decisão (`None` = sem decisão) e o processo que o fez.
+struct Aberto {
+    canal: mpsc::Sender<Option<String>>,
+    processo: Option<u32>,
+}
+
+/// Pedidos abertos, pelo id.
+type Pedidos = Arc<Mutex<HashMap<u64, Aberto>>>;
 
 pub struct Ponte {
     porta: u16,
@@ -65,6 +74,7 @@ pub struct Ponte {
 
 /// O que as threads de atendimento dividem.
 struct Comum {
+    porta: u16,
     autorizacao: String,
     espera: Duration,
     prazo_leitura: Duration,
@@ -100,6 +110,7 @@ impl Ponte {
 
         let pedidos = Pedidos::default();
         let comum = Arc::new(Comum {
+            porta,
             autorizacao: format!("Bearer {token}"),
             espera,
             prazo_leitura,
@@ -145,16 +156,21 @@ impl Ponte {
         }
         // tira do mapa e envia com a trava na mão: o fim do tempo nunca perde uma resposta que já saiu
         let mut pedidos = travar(&self.pedidos);
-        let canal = pedidos.remove(&id).ok_or_else(|| format!("o pedido {id} não está mais aberto"))?;
-        let _ = canal.send(corpo);
+        let aberto = pedidos.remove(&id).ok_or_else(|| format!("o pedido {id} não está mais aberto"))?;
+        let _ = aberto.canal.send(corpo);
         Ok(())
+    }
+
+    /// O processo que fez o pedido `id`, se ele ainda está aberto e foi possível saber.
+    pub fn processo_do_pedido(&self, id: u64) -> Option<u32> {
+        travar(&self.pedidos).get(&id).and_then(|a| a.processo)
     }
 
     /// Devolve vazio a todos os pedidos abertos: eles caem no terminal na hora. Usado quando a
     /// página recarrega e perde a lista do que estava mostrando.
     pub fn encerrar_pedidos(&self) {
-        for (_, canal) in travar(&self.pedidos).drain() {
-            let _ = canal.send(None);
+        for (_, aberto) in travar(&self.pedidos).drain() {
+            let _ = aberto.canal.send(None);
         }
     }
 }
@@ -172,12 +188,14 @@ fn atender(mut conexao: TcpStream, c: &Comum) {
             encerrar(conexao);
         }
         Ok((fonte, Rota::Evento, corpo)) => {
-            // responde antes de avisar: o status nunca espera a página (D8)
-            escrever(&mut conexao, 200, None);
+            // avisa antes de responder: a fonte só manda o próximo hook depois do 200, então os
+            // avisos chegam à página na ordem em que aconteceram (um evento atrasado não pode
+            // passar na frente de um pedido seguinte). Avisar só enfileira; não espera a página (D8).
             (c.avisar)(Aviso::Evento { fonte, corpo });
+            escrever(&mut conexao, 200, None);
         }
         Ok((fonte, Rota::Pedido, corpo)) => {
-            let decisao = esperar_decisao(c, fonte, corpo);
+            let decisao = esperar_decisao(c, &conexao, fonte, corpo);
             escrever(&mut conexao, 200, decisao.as_deref());
         }
     }
@@ -307,29 +325,60 @@ fn rota(url: &str) -> Option<(String, Rota)> {
     Some((fonte.to_string(), rota))
 }
 
-/// Avisa a página e espera a decisão por até `c.espera`. Sem decisão, `None`.
-fn esperar_decisao(c: &Comum, fonte: String, corpo: Value) -> Option<String> {
+/// De quanto em quanto tempo a espera confere se a fonte ainda está do outro lado.
+const VIGIA: Duration = Duration::from_millis(250);
+
+/// A fonte fechou a conexão? Olha sem ler (peek), sem bloquear. Conexão fechada lê 0 bytes ou dá
+/// erro; conexão viva sem nada para ler dá WouldBlock. Bytes a mais depois do pedido também
+/// encerram: o protocolo é uma requisição por conexão, e eles esconderiam o fechamento (o peek
+/// devolveria sempre os mesmos bytes, e o fim da conexão só apareceria depois deles).
+fn fonte_desistiu(conexao: &TcpStream) -> bool {
+    if conexao.set_nonblocking(true).is_err() {
+        return false;
+    }
+    let mut um = [0u8; 1];
+    let fechou = match conexao.peek(&mut um) {
+        Ok(_) => true, // 0 = fechou; mais que 0 = bytes fora do protocolo
+        Err(e) => e.kind() != std::io::ErrorKind::WouldBlock,
+    };
+    let _ = conexao.set_nonblocking(false);
+    fechou
+}
+
+/// Avisa a página e espera a decisão por até `c.espera`. Sem decisão, `None`. Se a fonte fecha a
+/// conexão no meio (respondeu por outro lugar), o pedido sai na hora e a página é avisada.
+fn esperar_decisao(c: &Comum, conexao: &TcpStream, fonte: String, corpo: Value) -> Option<String> {
     let id = c.proximo_id.fetch_add(1, Ordering::Relaxed);
     let (canal, chegada) = mpsc::channel();
+    // quem fez o pedido, enquanto a conexão está viva: para trazer a janela dele (E4)
+    let processo = conexao.peer_addr().ok().and_then(|a| crate::janela::processo_da_conexao(a.port(), c.porta));
     {
         let mut pedidos = travar(&c.pedidos);
         if pedidos.len() >= MAX_PEDIDOS {
             return None; // fila cheia: cai no terminal na hora, sem aparecer na ilha
         }
-        pedidos.insert(id, canal);
+        pedidos.insert(id, Aberto { canal, processo });
     }
     (c.avisar)(Aviso::Pedido { id, fonte, corpo });
-    match chegada.recv_timeout(c.espera) {
-        Ok(decisao) => decisao,
-        Err(_) => {
-            // o tempo acabou, mas a página pode ter respondido neste instante: vale quem tirar
-            // o pedido do mapa primeiro
-            let ainda_aberto = travar(&c.pedidos).remove(&id).is_some();
-            if ainda_aberto {
-                (c.avisar)(Aviso::Expirou { id });
-                None
-            } else {
-                chegada.try_recv().ok().flatten()
+    let fim = Instant::now() + c.espera;
+    loop {
+        let resta = fim.saturating_duration_since(Instant::now());
+        match chegada.recv_timeout(resta.min(VIGIA)) {
+            Ok(decisao) => return decisao,
+            Err(mpsc::RecvTimeoutError::Disconnected) => return None,
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                let acabou = resta <= VIGIA;
+                if !acabou && !fonte_desistiu(conexao) {
+                    continue;
+                }
+                // o tempo acabou (ou a fonte foi embora), mas a página pode ter respondido neste
+                // instante: vale quem tirar o pedido do mapa primeiro
+                let ainda_aberto = travar(&c.pedidos).remove(&id).is_some();
+                if !ainda_aberto {
+                    return chegada.try_recv().ok().flatten();
+                }
+                (c.avisar)(if acabou { Aviso::Expirou { id } } else { Aviso::Desistiu { id } });
+                return None;
             }
         }
     }
@@ -487,6 +536,74 @@ mod testes {
             avisos.recv_timeout(Duration::from_secs(1)).unwrap(),
             Aviso::Evento { fonte: "teste".into(), corpo: serde_json::json!({ "tipo": "pensando" }) }
         );
+    }
+
+    #[test]
+    fn fonte_que_fecha_a_conexao_e_percebida_e_o_pedido_sai() {
+        let (ponte, avisos) = ligar(30_000);
+        let corpo = r#"{"oi":1}"#;
+        let mut s = TcpStream::connect(("127.0.0.1", ponte.porta())).unwrap();
+        let cab = format!(
+            "POST /fontes/teste/pedido HTTP/1.1\r\nHost: 127.0.0.1\r\nAuthorization: {}\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{corpo}",
+            bearer(),
+            corpo.len()
+        );
+        s.write_all(cab.as_bytes()).unwrap();
+        let id = match avisos.recv_timeout(Duration::from_secs(5)).unwrap() {
+            Aviso::Pedido { id, .. } => id,
+            outro => panic!("esperava um pedido, veio {outro:?}"),
+        };
+        // respondida por outro lugar: a fonte cancela o pedido e fecha a conexão
+        let fechou = Instant::now();
+        drop(s);
+        assert_eq!(avisos.recv_timeout(Duration::from_secs(2)).unwrap(), Aviso::Desistiu { id });
+        assert!(fechou.elapsed() < Duration::from_secs(1), "levou {:?}", fechou.elapsed());
+        // uma decisão atrasada para esse pedido não vale mais
+        assert!(ponte.responder(id, Some(PERMITIR.into())).is_err());
+    }
+
+    #[test]
+    fn bytes_a_mais_depois_do_pedido_encerram_sem_decisao() {
+        let (ponte, avisos) = ligar(30_000);
+        let corpo = r#"{"oi":1}"#;
+        let mut s = TcpStream::connect(("127.0.0.1", ponte.porta())).unwrap();
+        let cab = format!(
+            "POST /fontes/teste/pedido HTTP/1.1\r\nHost: 127.0.0.1\r\nAuthorization: {}\r\nContent-Length: {}\r\n\r\n{corpo}",
+            bearer(),
+            corpo.len()
+        );
+        s.write_all(cab.as_bytes()).unwrap();
+        let id = match avisos.recv_timeout(Duration::from_secs(5)).unwrap() {
+            Aviso::Pedido { id, .. } => id,
+            outro => panic!("esperava um pedido, veio {outro:?}"),
+        };
+        // um byte fora do protocolo, e a conexão fica aberta: o fechamento não pode ficar escondido
+        s.write_all(b"x").unwrap();
+        assert_eq!(avisos.recv_timeout(Duration::from_secs(2)).unwrap(), Aviso::Desistiu { id });
+        assert!(ponte.responder(id, Some(PERMITIR.into())).is_err());
+    }
+
+    #[test]
+    fn o_aviso_do_evento_sai_antes_do_200() {
+        // a fonte só manda o próximo hook depois do 200: se o aviso já saiu, a ordem está garantida
+        let (ponte, avisos) = ligar(1000);
+        for i in 0..20 {
+            let corpo = format!(r#"{{"n":{i}}}"#);
+            assert_eq!(post(ponte.porta(), "/fontes/teste/evento", Some(&bearer()), &corpo).0, 200);
+            assert_eq!(
+                avisos.try_recv().expect("o aviso já devia estar na fila quando o 200 chegou"),
+                Aviso::Evento { fonte: "teste".into(), corpo: serde_json::json!({ "n": i }) }
+            );
+        }
+    }
+
+    #[test]
+    fn pedido_aberto_com_a_fonte_viva_nao_e_desistencia() {
+        let (ponte, avisos) = ligar(1200);
+        let (id, fio) = abrir_pedido(&ponte, &avisos);
+        // a fonte continua esperando: só o prazo encerra, e como expiração
+        assert_eq!(avisos.recv_timeout(Duration::from_secs(3)).unwrap(), Aviso::Expirou { id });
+        assert_eq!(fio.join().unwrap(), (200, String::new()));
     }
 
     #[test]
