@@ -147,5 +147,5 @@ test('sem settings.json: instalar cria o arquivo, sem backup', () => {
   const codigo = codigoDa(rodar('instalar', '--sim').saida);
   assert.equal(rodar('instalar', '--confirmar', codigo).codigo, 0);
   assert.equal(backups().length, antes);
-  assert.equal(Object.keys(JSON.parse(readFileSync(SETTINGS, 'utf8')).hooks).length, 7);
+  assert.equal(Object.keys(JSON.parse(readFileSync(SETTINGS, 'utf8')).hooks).length, 8);
 });

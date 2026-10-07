@@ -12,6 +12,49 @@ const Ponte = (() => {
   const abertos = [];
   let aoMudar = () => {};
 
+  // As ferramentas que começaram e ainda não terminaram, por sessão: { passoId, assinatura }. É
+  // daqui que o pedido (que vem sem id) descobre de qual ferramenta é.
+  const emCurso = new Map();
+  const MAX_EM_CURSO = 64;
+  const chaveDaSessao = (fonte, evento) => `${fonte}\u0000${evento.sessao ?? ''}`;
+
+  function anotarFerramenta(fonte, evento) {
+    const chave = chaveDaSessao(fonte, evento);
+    if (evento.tipo === 'ferramenta' && evento.passoId != null && evento.assinatura) {
+      const lista = emCurso.get(chave) ?? [];
+      lista.push({ passoId: evento.passoId, assinatura: evento.assinatura });
+      if (lista.length > MAX_EM_CURSO) lista.shift();
+      emCurso.set(chave, lista);
+    } else if ((evento.tipo === 'concluiu' || evento.tipo === 'erro') && evento.passoId != null) {
+      const lista = emCurso.get(chave);
+      const i = lista?.findIndex(f => f.passoId === evento.passoId) ?? -1;
+      if (i >= 0) lista.splice(i, 1);
+    } else if (sessaoMudou(evento)) {
+      emCurso.delete(chave);
+    }
+  }
+
+  // o pedido de uma ferramenta: a mais antiga em curso com a mesma assinatura (duas chamadas
+  // iguais em paralelo são indistinguíveis, e tanto faz qual fica com qual)
+  function idDoPedido(fonte, evento) {
+    const lista = emCurso.get(chaveDaSessao(fonte, evento));
+    return lista?.find(f => f.assinatura === evento.assinatura && !abertos.some(p => p.evento.passoId === f.passoId))?.passoId;
+  }
+
+  // O que encerra a vez de um pedido sem a ilha decidir: um prompt novo, o fim ou a saída da sessão
+  // (o pedido foi respondido no terminal, ou deixou de importar), ou o resultado da própria
+  // ferramenta dele. A ferramenta irmã que começa ao lado (chamadas em paralelo) NÃO encerra: o
+  // pedido continua esperando, no terminal e na ilha.
+  function sessaoMudou(evento) {
+    return evento.tipo === 'pensando' || evento.tipo === 'fim' || evento.tipo === 'saida' ||
+      (evento.tipo === 'erro' && !evento.ferramenta);
+  }
+  function encerra(evento, pedido) {
+    if (sessaoMudou(evento)) return true;
+    const resultado = evento.tipo === 'concluiu' || (evento.tipo === 'erro' && evento.ferramenta);
+    return resultado && evento.passoId != null && evento.passoId === pedido.evento.passoId;
+  }
+
   function traduzir(fonte, corpo) {
     const adaptador = ADAPTADORES[fonte];
     if (!adaptador) return null;
@@ -32,11 +75,13 @@ const Ponte = (() => {
     if (aviso.aviso === 'evento') {
       const evento = traduzir(aviso.fonte, aviso.corpo);
       if (!evento) return;
-      // A sessão andou com um pedido dela ainda aberto: ele foi respondido no terminal. Quando o
-      // terminal ganha, o Claude Code não cancela o hook (só ignora a resposta), e a conexão
-      // ficaria aberta até o prazo. O pedido sai da ilha e a conexão é liberada, sem decisão.
+      anotarFerramenta(aviso.fonte, evento);
+      // A ferramenta do pedido terminou, ou a sessão mudou, com o pedido ainda aberto: ele foi
+      // respondido no terminal. Quando o terminal ganha, o Claude Code não cancela o hook (só ignora
+      // a resposta), e a conexão ficaria aberta até o prazo. O pedido sai da ilha e a conexão é
+      // liberada, sem decisão.
       let saiu = null;
-      for (const p of abertos.filter(p => p.fonte === aviso.fonte && p.evento.sessao === evento.sessao)) {
+      for (const p of abertos.filter(p => p.fonte === aviso.fonte && p.evento.sessao === evento.sessao && encerra(evento, p))) {
         tirar(p.id);
         invoke('responder_pedido', { id: p.id, corpo: null }).catch(() => {});
         saiu = { evento: p.evento, como: 'respondido' };
@@ -50,6 +95,7 @@ const Ponte = (() => {
         return;
       }
       evento.pedidoId = aviso.id;
+      evento.passoId = idDoPedido(aviso.fonte, evento);
       abertos.push({ id: aviso.id, fonte: aviso.fonte, evento });
       aoMudar({ evento, abertos });
     } else if (aviso.aviso === 'expirou' || aviso.aviso === 'desistiu') {

@@ -60,11 +60,12 @@ Claude Code ── hook http ──▶  ponte em Rust (127.0.0.1:47321, com toke
 | **E2** ✅ | A ponte HTTP em Rust, que lê o HTTP ela mesma | Status em **2–5 ms**; **22 testes**; revisada pelo Codex |
 | **E3** ✅ | Instalador dos hooks (`npm run hooks`) e a primeira sessão real | App fechado: **3–17 ms** por hook; **38 testes** em JS; revisada pelo Codex; **89,8 MB** de média parada |
 | **E4** ✅ | Permitir, Negar e No terminal pela ilha; o terminal vem para a frente | Ilha solta o pedido respondido no terminal; **28 testes** em Rust, **43** em JS; **84,7 MB** parada; revisada pelo Codex |
+| **002 F1** ✅ | O cartão da sessão: passos, `+N −M` de cada edição e a mensagem final com OK | `+N −M` pelo patch real do `PostToolUse` (8º hook); pedidos em paralelo sem se perder; **81 testes** em JS; revisada pelo Codex |
 
 Um pedido de permissão abre a ilha sozinho, com o que o Claude quer fazer e três botões:
 **Negar**, **Permitir** e **No terminal** (que traz a janela do terminal para a frente). O terminal
 pergunta ao mesmo tempo, e vale quem responder primeiro; respondido lá, a ilha solta o pedido
-assim que a sessão anda. Sem resposta em 15 s, ele fica só no terminal.
+assim que a ferramenta dele roda (ou o turno acaba). Sem resposta em 15 s, ele fica só no terminal.
 
 ### Ligar ao Claude Code
 
@@ -166,6 +167,7 @@ botões da ilha (ou até 15 s).
 src/                      a interface (JavaScript puro, sem framework)
   index.html, ilha.css, ilha.js    a ilha, os botões do pedido, a bandeja e o recorte da janela
   ponte.js                         recebe os avisos da ponte e guarda a fila de pedidos
+  sessao.js                        a sessão contada: passos, +N −M por arquivo e o fim (002)
   adaptadores/claude-code.js       hooks do Claude Code → formato comum (e a resposta)
   mascote/gato.js                  o gato: Canvas 2D, molas e volume em camadas
   textos/pt-BR.js                  todos os textos do app, num arquivo só
@@ -186,7 +188,7 @@ ideias/                   documentos vivos (diferenciais, mascote, concorrente)
 | Spec | O que é | Estado |
 |---|---|---|
 | [001 — MVP](specs/001-mvp.md) | A ilha, o gato, o status ao vivo e a permissão pela ilha | **Concluída** (05/10) |
-| [002 — A ilha conta a sessão](specs/002-sessao-na-ilha.md) | Passos, `+N −M`, a mensagem final, a linha do tempo, várias sessões, selo e a personalidade do gato (cochilo, caneca, ronronar, patadinha) | Rascunho |
+| [002 — A ilha conta a sessão](specs/002-sessao-na-ilha.md) | Passos, `+N −M`, a mensagem final, a linha do tempo, várias sessões, selo e a personalidade do gato (cochilo, caneca, ronronar, patadinha) | **Aprovada** (07/10); F1 (o cartão da sessão) concluída em 07/10 |
 | [003 — Decidir com confiança](specs/003-decidir-com-confianca.md) | **O diff no próprio pedido**, o nível de risco do comando e "sempre permitir" com a regra à vista | Rascunho |
 | [004 — Responder ao Claude](specs/004-responder-ao-claude.md) | As perguntas de múltipla escolha respondidas pela ilha | Rascunho |
 | [005 — Configurações e conforto](specs/005-configuracoes-e-conforto.md) | Janela de configurações, tela cheia, modo foco, modo apresentação, som, atalhos e uso do plano | Rascunho |

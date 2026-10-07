@@ -15,9 +15,22 @@
     <div class="aberta">
       <canvas id="gato-ilha"></canvas>
       <div class="info">
-        <div class="linha1"><b id="titulo"></b> · <span id="subtitulo"></span></div>
+        <div class="linha1">
+          <span class="cabeca"><b id="titulo"></b><span id="subtitulo"></span></span>
+          <span class="contagem" id="contagem"></span>
+        </div>
         <div class="linha2" id="fala"></div>
         <div class="linha3" id="dica"></div>
+        <!-- o cartão da sessão (classe .contando na ilha): os dois últimos passos -->
+        <div class="passos">
+          <div class="passo" id="passo-anterior"><span class="marca"></span><span class="texto"></span><span class="conta"><span class="mais"></span> <span class="menos"></span></span></div>
+          <div class="passo atual" id="passo-atual"><span class="marca"></span><span class="texto"></span><span class="conta"><span class="mais"></span> <span class="menos"></span></span></div>
+        </div>
+        <!-- o cartão do fim (classe .terminou na ilha): a mensagem final e o OK -->
+        <div class="final">
+          <div class="mensagem" id="mensagem"></div>
+          <button type="button" id="bt-ok"></button>
+        </div>
         <!-- só durante um pedido de permissão (classe .pedindo na ilha) -->
         <div class="alvo" id="alvo"></div>
         <div class="acoes">

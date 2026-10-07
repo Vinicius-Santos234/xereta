@@ -26,6 +26,17 @@ const TEXTOS = {
     negar: 'Negar',
     noTerminal: 'No terminal',
   },
+  // o cartão da sessão e o do fim (002, F1)
+  cartao: {
+    passos: n => (n === 1 ? '1 passo' : `${n} passos`),
+    arquivos: ({ arquivos, mais, menos }) => `${arquivos === 1 ? '1 arquivo' : `${arquivos} arquivos`} (+${mais} −${menos})`,
+    terminou: projeto => `${projeto} terminou`,
+    parou: projeto => `${projeto} parou com erro`,
+    semMensagem: 'Prontinho!',
+    ok: 'OK',
+    mais: n => `+${n}`,
+    menos: n => `−${n}`,
+  },
   // o que um pedido de permissão quer fazer: o verbo e o alvo (comando, arquivo, endereço).
   // `caminho` mostra o arquivo relativo ao projeto, ou completo quando ele está fora do projeto.
   pedidos: {
@@ -35,6 +46,9 @@ const TEXTOS = {
     MultiEdit: (e, caminho) => ({ verbo: 'editar', alvo: caminho(e.file_path) }),
     Write: (e, caminho) => ({ verbo: 'escrever', alvo: caminho(e.file_path) }),
     NotebookEdit: (e, caminho) => ({ verbo: 'editar', alvo: caminho(e.notebook_path) }),
+    Read: (e, caminho) => ({ verbo: 'ler', alvo: caminho(e.file_path) }),
+    Grep: (e, caminho) => ({ verbo: 'procurar', alvo: e.path ? `${e.pattern ?? ''} em ${caminho(e.path)}` : (e.pattern ?? '') }),
+    Glob: (e, caminho) => ({ verbo: 'procurar', alvo: e.path ? `${e.pattern ?? ''} em ${caminho(e.path)}` : (e.pattern ?? '') }),
     WebFetch: e => ({ verbo: 'abrir', alvo: hostDaUrl(e.url) }),
     WebSearch: e => ({ verbo: 'pesquisar', alvo: e.query ?? '' }),
     outra: nome => ({ verbo: 'usar', alvo: nome }),
@@ -60,7 +74,7 @@ const TEXTOS = {
     removido: 'Removidos. As sessões novas do Claude Code não chamam mais o Xereta.',
     estado: {
       desligado: 'Desligado: nenhum hook do Xereta no settings.json.',
-      ligado: 'Ligado: os 7 hooks do Xereta, com a porta e o token atuais.',
+      ligado: 'Ligado: os 8 hooks do Xereta, com a porta e o token atuais.',
       diferente: 'Há hooks do Xereta, mas diferentes dos de agora (porta, token, ou um hook a mais ou a menos). Rode "npm run hooks -- instalar" para atualizar.',
     },
   },
@@ -88,6 +102,7 @@ const TEXTOS = {
     WebSearch: e => `Pesquisando ${e.query ?? ''}`,
     Task: () => 'Chamando um ajudante',
     Agent: () => 'Chamando um ajudante',
+    Skill: e => (e.skill ? `Usando a skill ${e.skill}` : 'Usando uma skill'),
     outra: nome => `Usando ${nome}`,
   },
   eventos: {

@@ -61,18 +61,64 @@ html, body {
 }
 
 #gato-ilha { width: 100px; height: 110px; flex: none; }
-.info { min-width: 0; padding-right: 18px; }
-.linha1 { color: #a9a7b4; }
+.info { flex: 1; min-width: 0; padding-right: 18px; }
+.linha1 { display: flex; color: #a9a7b4; white-space: nowrap; }
 .linha1 b { color: #fff; }
+.cabeca { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+#subtitulo:not(:empty)::before { content: " · "; }
+.contagem { flex: none; margin-left: auto; padding-left: 10px; color: #77768a; }
 .linha2 { font-size: 15px; margin-top: 2px; }
 .linha3 { font-size: 12px; color: #77768a; margin-top: 4px; }
+
+/* ---------- a sessão contada (002, F1) ---------- */
+/* .contando: os dois últimos passos no lugar da fala e da dica. .terminou: a mensagem final e o OK. */
+.passos, .final { display: none; }
+.ilha.contando .linha2, .ilha.contando .linha3,
+.ilha.terminou .linha2, .ilha.terminou .linha3 { display: none; }
+.ilha.contando .passos { display: block; margin-top: 4px; }
+.ilha.terminou .final { display: flex; }
+
+.passo { display: flex; gap: 6px; align-items: baseline; white-space: nowrap; color: #a9a7b4; }
+.passo[hidden] { display: none; }
+.passo.atual { font-size: 15px; color: #ecebf0; margin-top: 1px; }
+.passo .marca { flex: none; width: 1em; text-align: center; color: #77768a; }
+.passo .marca.ok { color: #6fd08c; }
+.passo .marca.erro { color: #ff7a7a; }
+.passo .texto { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.passo .conta { flex: none; font: 12px/1 ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.passo .conta:empty, .passo .conta[hidden] { display: none; }
+.mais { color: #6fd08c; }
+.menos { color: #ff7a7a; }
+
+.final { gap: 10px; align-items: flex-end; margin-top: 4px; }
+.mensagem {
+  flex: 1;
+  min-width: 0;
+  color: #ecebf0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.final button {
+  flex: none;
+  font: 600 12px/1 system-ui, "Segoe UI", sans-serif;
+  color: #111;
+  background: #f3f2f7;
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 13px;
+  cursor: pointer;
+}
+.final button:hover { background: #fff; }
 
 /* ---------- pedido de permissão (E4) ---------- */
 /* A ilha fica âmbar por dentro (a borda de fora seria cortada pelo recorte da janela) e troca a
    fala e a dica pelo alvo e pelos botões. */
 .alvo, .acoes { display: none; }
 .ilha.pedindo { box-shadow: inset 0 0 0 1.5px rgba(255, 186, 60, .6); }
-.ilha.pedindo .linha2, .ilha.pedindo .linha3 { display: none; }
+.ilha.pedindo .linha2, .ilha.pedindo .linha3,
+.ilha.pedindo .passos, .ilha.pedindo .final { display: none; }
 
 .alvo {
   margin-top: 5px;

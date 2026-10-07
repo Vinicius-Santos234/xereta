@@ -1,0 +1,225 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { criarSessoes, somaDosArquivos, textoSimples } from '../src/sessao.js';
+
+// eventos no formato comum, como o adaptador do Claude Code entrega
+const base = { fonte: 'claude-code', sessao: 's1', projeto: 'korus' };
+const ev = (tipo, extra = {}) => ({ ...base, tipo, resumo: tipo, ...extra });
+const ferramenta = (id, resumo) => ev('ferramenta', { ferramenta: 'Bash', passoId: id, resumo });
+const editou = (id, caminho, mais, menos) =>
+  ev('concluiu', { ferramenta: 'Edit', passoId: id, edicao: { caminho, conta: { mais, menos } } });
+const concluiu = id => ev('concluiu', { ferramenta: 'Bash', passoId: id });
+
+const estados = s => s.passos.map(p => `${p.estado}:${p.resumo}`);
+
+test('os passos contam desde o último prompt, e cada um fica ✓ com o resultado dele (D1, D2)', () => {
+  const S = criarSessoes();
+  S.receber(ev('pensando'));
+  S.receber(ferramenta('a', 'Lendo billing.ts'));
+  S.receber(ferramenta('b', 'Rodando npm test'));
+  // chamadas em paralelo: começar o b não conclui o a
+  assert.deepEqual(estados(S.obter(base)), ['atual:Lendo billing.ts', 'atual:Rodando npm test']);
+  const s = S.receber(concluiu('a'));
+  assert.equal(s.total, 2);
+  assert.deepEqual(estados(s), ['ok:Lendo billing.ts', 'atual:Rodando npm test']);
+  assert.equal(s.projeto, 'korus');
+
+  S.receber(ev('pensando'));
+  assert.equal(S.obter(base).total, 0, 'prompt novo zera');
+  assert.deepEqual(S.obter(base).passos, []);
+});
+
+test('um id que não está entre os 10 guardados não mexe em outro passo (Codex, 07/10)', () => {
+  const S = criarSessoes();
+  for (let i = 0; i <= 10; i++) S.receber(ferramenta(`p${i}`, `passo ${i}`));
+  const s = S.receber(editou('p0', 'C:\\korus\\a.ts', 7, 1));
+  assert.equal(s.passos.at(-1).estado, 'atual', 'o p10 continua em curso');
+  assert.equal(s.passos.at(-1).conta, null);
+  assert.deepEqual(somaDosArquivos(s), { arquivos: 1, mais: 7, menos: 1 }, 'a soma do p0 conta, mesmo fora da tela');
+});
+
+test('um resultado atrasado do prompt anterior não mexe no prompt novo (Codex, 07/10)', () => {
+  const S = criarSessoes();
+  S.receber(ferramenta('velho', 'Rodando npm test'));
+  S.receber(ev('pensando'));
+  S.receber(ferramenta('novo', 'Lendo x'));
+  S.receber(ev('erro', { ferramenta: 'Bash', passoId: 'velho' }));
+  S.receber(editou('velho', 'C:\\korus\\a.ts', 3, 0));
+  const s = S.obter(base);
+  assert.deepEqual(estados(s), ['atual:Lendo x']);
+  assert.deepEqual(somaDosArquivos(s), { arquivos: 0, mais: 0, menos: 0 });
+});
+
+test('o fim conclui todos os passos ainda em curso', () => {
+  const S = criarSessoes();
+  S.receber(ferramenta('a', 'A'));
+  S.receber(ferramenta('b', 'B'));
+  assert.deepEqual(estados(S.receber(ev('fim'))), ['ok:A', 'ok:B']);
+});
+
+test('a contagem segue além dos 10 passos guardados', () => {
+  const S = criarSessoes();
+  for (let i = 0; i < 14; i++) S.receber(ferramenta(`p${i}`, `passo ${i}`));
+  const s = S.obter(base);
+  assert.equal(s.total, 14);
+  assert.equal(s.passos.length, 10);
+  assert.equal(s.passos[0].resumo, 'passo 4');
+});
+
+test('o +N −M vai para o passo certo pelo id, e o passo fica ✓', () => {
+  const S = criarSessoes();
+  S.receber(ferramenta('e1', 'Editando billing.ts'));
+  const s = S.receber(editou('e1', 'C:\\korus\\billing.ts', 3, 1));
+  assert.deepEqual(s.passos[0].conta, { mais: 3, menos: 1 });
+  assert.equal(s.passos[0].estado, 'ok');
+});
+
+test('sem id, o +N −M vai para o último passo', () => {
+  const S = criarSessoes();
+  S.receber(ferramenta(undefined, 'Editando a.ts'));
+  const s = S.receber(editou(undefined, 'a.ts', 1, 0));
+  assert.deepEqual(s.passos[0].conta, { mais: 1, menos: 0 });
+});
+
+test('a soma conta cada arquivo uma vez, com o +N −M de todas as edições dele', () => {
+  const S = criarSessoes();
+  S.receber(ferramenta('1', 'x')); S.receber(editou('1', 'C:\\korus\\billing.ts', 3, 1));
+  S.receber(ferramenta('2', 'x')); S.receber(editou('2', 'c:/KORUS/billing.ts', 2, 2));
+  S.receber(ferramenta('3', 'x')); S.receber(editou('3', 'C:\\korus\\novo.md', 7, 0));
+  // uma edição sem conta (formato desconhecido) ainda conta o arquivo
+  S.receber(ferramenta('4', 'x')); S.receber(ev('concluiu', { passoId: '4', edicao: { caminho: 'C:\\korus\\outro.ts', conta: null } }));
+  assert.deepEqual(somaDosArquivos(S.obter(base)), { arquivos: 3, mais: 12, menos: 3 });
+});
+
+test('ferramenta que falhou fica ✗; o passo seguinte não a desmarca', () => {
+  const S = criarSessoes();
+  S.receber(ferramenta('a', 'Rodando npm test'));
+  S.receber(ev('erro', { ferramenta: 'Bash', passoId: 'a' }));
+  const s = S.receber(ferramenta('b', 'Editando x'));
+  assert.deepEqual(estados(s), ['erro:Rodando npm test', 'atual:Editando x']);
+  assert.equal(s.fim, null, 'erro de ferramenta não é o fim da sessão');
+});
+
+test('pedido negado pela ilha: ✗ no passo dele, pelo id', () => {
+  const S = criarSessoes();
+  S.receber(ferramenta('a', 'Rodando git push'));
+  S.receber(ferramenta('b', 'Lendo x'));
+  S.negado({ ...base, passoId: 'a' });
+  assert.deepEqual(estados(S.obter(base)), ['negado:Rodando git push', 'atual:Lendo x']);
+  // sem id (pedido que não achou a ferramenta): o último
+  S.negado(base);
+  assert.equal(S.obter(base).passos[1].estado, 'negado');
+});
+
+test('um pedido não vira passo', () => {
+  const S = criarSessoes();
+  S.receber(ferramenta('a', 'Rodando git push'));
+  S.receber(ev('permissao', { ferramenta: 'Bash' }));
+  assert.equal(S.obter(base).total, 1);
+  assert.equal(S.receber(ev('permissao', { sessao: 'outra' })), null, 'nem abre sessão');
+  assert.equal(S.quantas, 1);
+});
+
+test('o fim conclui o passo e guarda a mensagem sem Markdown; o próximo evento o tira (D4, D4b)', () => {
+  const S = criarSessoes();
+  S.receber(ferramenta('a', 'Rodando npm test'));
+  const s = S.receber(ev('fim', { mensagem: 'Corrigi o **arredondamento**, `48` testes passando.' }));
+  assert.deepEqual(s.fim, { mensagem: 'Corrigi o arredondamento, 48 testes passando.', falhou: false });
+  assert.equal(s.passos[0].estado, 'ok');
+  assert.equal(s.total, 1, 'o fim não zera a contagem: o cartão mostra os passos');
+
+  S.receber(ferramenta('b', 'Rodando git status'));
+  assert.equal(S.obter(base).fim, null);
+});
+
+test('fim sem mensagem, ou só com código, fica com mensagem null', () => {
+  const S = criarSessoes();
+  assert.equal(S.receber(ev('fim', { mensagem: null })).fim.mensagem, null);
+  assert.equal(S.receber(ev('fim', { mensagem: '```\nnpm test\n```' })).fim.mensagem, null);
+});
+
+test('a sessão que parou com erro tem um fim que falhou', () => {
+  const S = criarSessoes();
+  S.receber(ferramenta('a', 'x'));
+  const s = S.receber(ev('erro'));
+  assert.deepEqual(s.fim, { mensagem: null, falhou: true });
+});
+
+test('o OK dispensa o cartão do fim', () => {
+  const S = criarSessoes();
+  S.receber(ev('fim', { mensagem: 'Pronto.' }));
+  S.dispensar(base);
+  assert.equal(S.obter(base).fim, null);
+  assert.doesNotThrow(() => S.dispensar({ fonte: 'x', sessao: 'nenhuma' }));
+});
+
+test('sessões separadas por id e por fonte; o SessionEnd tira a sessão', () => {
+  const S = criarSessoes();
+  S.receber(ferramenta('a', 'x'));
+  S.receber({ ...ferramenta('a', 'y'), sessao: 's2' });
+  S.receber({ ...ferramenta('a', 'z'), fonte: 'codex' });
+  assert.equal(S.quantas, 3);
+  assert.equal(S.receber(ev('saida')), null);
+  assert.equal(S.quantas, 2);
+  assert.equal(S.obter(base), null);
+});
+
+test('no máximo 20 sessões: sai a que mudou há mais tempo', () => {
+  const S = criarSessoes();
+  for (let i = 0; i < 20; i++) S.receber({ ...ev('pensando'), sessao: `s${i}` });
+  S.receber({ ...ev('pensando'), sessao: 's0' }); // a s0 mexeu agora: a mais velha passa a ser a s1
+  S.receber({ ...ev('pensando'), sessao: 'nova' });
+  assert.equal(S.quantas, 20);
+  assert.ok(S.obter({ ...base, sessao: 's0' }));
+  assert.equal(S.obter({ ...base, sessao: 's1' }), null);
+});
+
+test('cada passo guarda a hora (para a linha do tempo)', () => {
+  const S = criarSessoes({ agora: () => 1234 });
+  assert.equal(S.receber(ferramenta('a', 'x')).passos[0].hora, 1234);
+});
+
+test('textoSimples tira a marcação do Markdown', () => {
+  const casos = [
+    ['## Pronto\n\nCorrigi o **IVA** em `billing.ts`.', 'Pronto. Corrigi o IVA em billing.ts.'],
+    ['# Feito! ##\nok', 'Feito! ok'],
+    ['Mudei:\n- um\n- **dois**\n1. três;', 'Mudei: um. dois. três;'],
+    ['Veja [a doc](https://x.dev) e *isto*.', 'Veja a doc e isto.'],
+    ['Antes\n```js\nconst segredo = 1;\n```\nDepois', 'Antes Depois'],
+    ['> citado\n\n---\n\n~~velho~~ novo', 'citado velho novo'],
+    ['| a | b |\n|---|:-:|\n| 1 | 2 |', 'a · b · 1 · 2'],
+    ['o last_assistant_message e snake_case ficam', 'o last_assistant_message e snake_case ficam'],
+    ['2 * 3 * 4 continua', '2 * 3 * 4 continua'],
+    ['', ''],
+  ];
+  for (const [md, esperado] of casos) assert.equal(textoSimples(md), esperado, md);
+  assert.equal(textoSimples(null), '');
+});
+
+test('textoSimples é linear: entradas que faziam as regex voltarem atrás passam rápido (Codex, 07/10)', () => {
+  const n = 64_000;
+  const casos = {
+    colchetes: '['.repeat(n),
+    espacosEx: ' '.repeat(n) + 'x',
+    tituloComEspacos: '#' + ' '.repeat(n) + 'x',
+    linhasDeEspaco: (' '.repeat(50) + '\n').repeat(n / 50) + 'x',
+    asteriscos: '**'.repeat(n / 2),
+    italicoSemFim: 'a *' + 'b'.repeat(n),
+    riscado: '~~'.repeat(n / 2),
+    pipes: '| '.repeat(n / 2),
+    tabela: ('|' + ' -'.repeat(40) + ' x\n').repeat(n / 80),
+    crases: '`'.repeat(n),
+  };
+  for (const [nome, md] of Object.entries(casos)) {
+    const t0 = performance.now();
+    textoSimples(md);
+    const ms = performance.now() - t0;
+    assert.ok(ms < 100, `${nome}: ${ms.toFixed(1)} ms`);
+  }
+});
+
+test('textoSimples corta mensagem longa com reticências', () => {
+  const t = textoSimples('palavra '.repeat(100));
+  assert.ok(t.length <= 280);
+  assert.ok(t.endsWith('…'));
+});

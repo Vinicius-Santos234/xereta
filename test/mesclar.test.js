@@ -22,12 +22,12 @@ const settingsDoVault = () => ({
 const doVault = s => Object.fromEntries(Object.entries(s.hooks).map(([ev, gs]) =>
   [ev, gs.filter(g => !g.hooks.some(ehDoXereta))]).filter(([, gs]) => gs.length));
 
-test('instalar põe os 7 hooks e deixa os do vault idênticos', () => {
+test('instalar põe os 8 hooks e deixa os do vault idênticos', () => {
   const antes = settingsDoVault();
   const depois = instalar(antes, OPCOES);
   assert.deepEqual(doVault(depois), antes.hooks);
   const nossos = Object.values(depois.hooks).flat().flatMap(g => g.hooks).filter(ehDoXereta);
-  assert.equal(nossos.length, 7);
+  assert.equal(nossos.length, 8);
   assert.ok(!depois.hooks.SessionStart.some(g => g.hooks.some(ehDoXereta)), 'nada no SessionStart: o Claude Code ignora http ali');
   assert.equal(depois.model, 'opus');
   assert.equal(depois.theme, 'dark');
@@ -44,6 +44,17 @@ test('os grupos têm a rota, o timeout, o matcher e o token certos', () => {
   assert.equal(inicio.matcher, undefined);
   assert.equal(inicio.hooks[0].url, 'http://127.0.0.1:47321/fontes/claude-code/evento');
   assert.equal(inicio.hooks[0].timeout, 2);
+  // o PostToolUse em toda ferramenta: solta o pedido respondido no terminal e traz o +N −M (002)
+  const depois = grupo(HOOKS.find(h => h.evento === 'PostToolUse'), OPCOES);
+  assert.equal(depois.matcher, '*');
+  assert.equal(depois.hooks[0].url, 'http://127.0.0.1:47321/fontes/claude-code/evento');
+  assert.equal(depois.hooks[0].timeout, 2);
+});
+
+test('o PostToolUse do Xereta entra num grupo próprio, ao lado dos do vault', () => {
+  const depois = instalar(settingsDoVault(), OPCOES).hooks.PostToolUse;
+  assert.equal(depois.length, 3);
+  assert.deepEqual(depois.slice(0, 2), settingsDoVault().hooks.PostToolUse);
 });
 
 test('rodar duas vezes dá o mesmo que rodar uma', () => {
@@ -54,7 +65,7 @@ test('rodar duas vezes dá o mesmo que rodar uma', () => {
 test('remover devolve exatamente o de antes, também no texto', () => {
   const antes = settingsDoVault();
   const { settings, removidos } = remover(instalar(antes, OPCOES));
-  assert.equal(removidos, 7);
+  assert.equal(removidos, 8);
   assert.equal(JSON.stringify(settings, null, 2), JSON.stringify(antes, null, 2));
 });
 
@@ -67,7 +78,7 @@ test('trocar o token troca os hooks, sem duplicar', () => {
   const velho = instalar(settingsDoVault(), OPCOES);
   const novo = instalar(velho, { ...OPCOES, token: 'b'.repeat(64) });
   const nossos = Object.values(novo.hooks).flat().flatMap(g => g.hooks).filter(ehDoXereta);
-  assert.equal(nossos.length, 7);
+  assert.equal(nossos.length, 8);
   assert.ok(nossos.every(h => h.headers.Authorization.endsWith('b'.repeat(64))));
 });
 
@@ -114,6 +125,21 @@ test('estado: desligado, ligado e diferente', () => {
   delete ligado.hooks.SessionEnd;
   assert.equal(estado(ligado, OPCOES), 'diferente');
 });
+
+test('as chaves do hook noutra ordem continuam "ligado", e reinstalar não muda nada', () => {
+  const ligado = instalar(settingsDoVault(), OPCOES);
+  const invertido = copiaComChavesInvertidas(ligado);
+  assert.equal(estado(invertido, OPCOES), 'ligado');
+  // a ordem que o instalador grava é a do settings.json real: type, url, timeout, headers
+  assert.deepEqual(Object.keys(grupo(HOOKS[0], OPCOES).hooks[0]), ['type', 'url', 'timeout', 'headers']);
+  assert.equal(JSON.stringify(instalar(ligado, OPCOES)), JSON.stringify(ligado));
+});
+
+function copiaComChavesInvertidas(v) {
+  if (Array.isArray(v)) return v.map(copiaComChavesInvertidas);
+  if (v === null || typeof v !== 'object') return v;
+  return Object.fromEntries(Object.keys(v).reverse().map(k => [k, copiaComChavesInvertidas(v[k])]));
+}
 
 test('com a anotação, estruturas vazias que já existiam voltam iguais', () => {
   for (const antes of [{ hooks: {} }, { hooks: { Stop: [] } }, { hooks: { Stop: [], UserPromptSubmit: [] } }, settingsDoVault()]) {

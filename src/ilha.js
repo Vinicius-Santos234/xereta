@@ -56,12 +56,16 @@ function definirEstado(e) {
   $('fala').textContent = t.fala;
 }
 
-function escrever({ titulo = TEXTOS.app, subtitulo = '', pilula, fala, dica = '' }) {
+// `cartao`: null (fala e dica), 'contando' (os passos da sessão) ou 'terminou' (a mensagem final)
+function escrever({ titulo = TEXTOS.app, subtitulo = '', pilula, fala, dica = '', contagem = '', cartao = null }) {
   $('titulo').textContent = titulo;
   $('subtitulo').textContent = subtitulo;
+  $('contagem').textContent = contagem;
   if (pilula !== undefined) $('texto-pilula').textContent = pilula;
   if (fala !== undefined) $('fala').textContent = fala;
   $('dica').textContent = dica;
+  el.classList.toggle('contando', cartao === 'contando');
+  el.classList.toggle('terminou', cartao === 'terminou');
 }
 
 // a ilha sem nada para contar: o subtítulo vira "ouvindo na porta …" quando a ponte liga
@@ -75,7 +79,7 @@ escrever(ociosa);
 // ---------- o que as fontes contam (E2) ----------
 // Tipo do formato comum (§4) → cara do gato.
 const ESTADO_DO_TIPO = {
-  inicio: 'oi', pensando: 'pensando', ferramenta: 'trabalhando', permissao: 'esperando',
+  inicio: 'oi', pensando: 'pensando', ferramenta: 'trabalhando', concluiu: 'trabalhando', permissao: 'esperando',
   erro: 'erro', fim: 'feliz', saida: 'parado', noTerminal: 'esperando', respondido: 'trabalhando',
   negado: 'negou', encerrado: 'parado',
 };
@@ -109,15 +113,86 @@ function decidir(id, decisao) {
   antes.then(() => Ponte.responder(id, decisao)).catch(err => console.error('[xereta]', err));
 }
 
+// ---------- a sessão contada (002, F1) ----------
+// As sessões vêm de sessao.js (módulo ES), carregado no início, antes de a ponte ligar.
+let Sessao = null;
+let sessoes = null;
+
+const MARCA = { atual: '›', ok: '✓', erro: '✗', negado: '✗' };
+const COR_DA_MARCA = { ok: 'ok', erro: 'erro', negado: 'erro' };
+// statuses que contam o que aconteceu com o último passo (o do pedido): tomam o lugar dele
+const SOBRE_O_PEDIDO = new Set(['noTerminal', 'respondido', 'encerrado', 'negado']);
+
+// As duas linhas do cartão: o passo anterior e o atual. Um status que não é passo ("Pensando…",
+// "No terminal: …") entra como a linha atual.
+function linhasDoCartao(sessao, status) {
+  const anterior = sessao.passos.at(-2), ultimo = sessao.passos.at(-1);
+  const ehPasso = status.tipo === 'ferramenta' || status.tipo === 'concluiu' || (status.tipo === 'erro' && status.ferramenta);
+  if (ehPasso) return [anterior, ultimo];
+  const linha = { estado: status.tipo === 'negado' ? 'negado' : 'atual', resumo: status.resumo, conta: null };
+  return SOBRE_O_PEDIDO.has(status.tipo) ? [anterior, linha] : [ultimo, linha];
+}
+
+function escreverPasso(no, passo) {
+  no.hidden = !passo;
+  if (!passo) return;
+  const marca = no.querySelector('.marca');
+  marca.textContent = MARCA[passo.estado] ?? MARCA.atual;
+  marca.className = `marca ${COR_DA_MARCA[passo.estado] ?? ''}`;
+  no.querySelector('.texto').textContent = passo.resumo;
+  const conta = no.querySelector('.conta');
+  conta.hidden = !passo.conta;
+  if (passo.conta) {
+    conta.querySelector('.mais').textContent = TEXTOS.cartao.mais(passo.conta.mais);
+    conta.querySelector('.menos').textContent = TEXTOS.cartao.menos(passo.conta.menos);
+  }
+}
+
 function mostrarEvento(evento) {
+  const sessao = sessoes?.obter(evento);
+  if (sessao?.fim) return mostrarFim(evento, sessao);
   definirEstado(ESTADO_DO_TIPO[evento.tipo] ?? 'parado');
   escrever({
     titulo: evento.projeto ?? TEXTOS.app,
     subtitulo: TEXTOS.fontes[evento.fonte] ?? evento.fonte,
     pilula: evento.resumo,
     fala: evento.resumo,
+    contagem: sessao?.total ? TEXTOS.cartao.passos(sessao.total) : '',
+    cartao: sessao ? 'contando' : null,
   });
+  if (sessao) {
+    const [anterior, atual] = linhasDoCartao(sessao, evento);
+    escreverPasso($('passo-anterior'), anterior);
+    escreverPasso($('passo-atual'), atual);
+  }
 }
+
+// D4, D4b: "korus terminou · 9 passos · 2 arquivos (+12 −4)", a mensagem final e o OK
+function mostrarFim(evento, sessao) {
+  const { falhou, mensagem } = sessao.fim;
+  definirEstado(falhou ? 'erro' : 'feliz');
+  const projeto = evento.projeto ?? sessao.projeto ?? TEXTOS.app;
+  const soma = Sessao.somaDosArquivos(sessao);
+  escrever({
+    titulo: (falhou ? TEXTOS.cartao.parou : TEXTOS.cartao.terminou)(projeto),
+    subtitulo: [sessao.total ? TEXTOS.cartao.passos(sessao.total) : '', soma.arquivos ? TEXTOS.cartao.arquivos(soma) : '']
+      .filter(Boolean).join(' · '),
+    pilula: evento.resumo,
+    cartao: 'terminou',
+  });
+  $('mensagem').textContent = mensagem ?? (falhou ? TEXTOS.eventos.parou : TEXTOS.cartao.semMensagem);
+}
+
+// o OK: o cartão do fim sai, e a ilha volta a ficar quieta
+$('bt-ok').textContent = TEXTOS.cartao.ok;
+$('bt-ok').addEventListener('click', ev => {
+  ev.stopPropagation(); // o clique não chega ao gato
+  if (!ultimoStatus) return;
+  sessoes?.dispensar(ultimoStatus);
+  ultimoStatus = null;
+  mostrarOciosa();
+  if (!mouseDentro) agendarRecolher();
+});
 
 // o pedido na tela: "korus · quer rodar · Claude Code", o alvo e os botões
 function mostrarPedido(evento, mais) {
@@ -135,11 +210,15 @@ function mostrarPedido(evento, mais) {
 
 // O pedido aberto mais antigo manda na ilha; sem pedidos, vale o último status.
 function aoMudarPonte({ evento, abertos, saiu }) {
+  if (evento) sessoes?.receber(evento);
   if (evento && evento.tipo !== 'permissao') ultimoStatus = evento;
   // O status que fica no lugar do pedido que saiu. Se a sessão já andou depois do pedido (até
   // terminou), o aviso chegou atrasado e não vale mais.
   const sessaoAndou = ultimoStatus?.sessao === saiu?.evento.sessao && ultimoStatus?.chegou > saiu?.evento.chegou;
-  if (saiu && !sessaoAndou) ultimoStatus = { ...saiu.evento, ...DEPOIS_DO_PEDIDO[saiu.como](saiu.evento) };
+  if (saiu && !sessaoAndou) {
+    ultimoStatus = { ...saiu.evento, ...DEPOIS_DO_PEDIDO[saiu.como](saiu.evento) };
+    if (saiu.como === 'negado') sessoes?.negado(saiu.evento);
+  }
 
   const primeiro = abertos[0]?.id ?? null;
   if (primeiro !== naTela.id) {
@@ -150,12 +229,14 @@ function aoMudarPonte({ evento, abertos, saiu }) {
   el.classList.toggle('pedindo', abertos.length > 0);
   if (abertos.length) {
     mostrarPedido(abertos[0].evento, abertos.length - 1);
-    abrirParaOPedido();
+    abrirSozinha();
     return;
   }
   if (ultimoStatus) mostrarEvento(ultimoStatus);
   else mostrarOciosa(); // título, subtítulo e alvo do pedido que acabou não podem ficar para trás
-  if (!mouseDentro) agendarRecolher(); // a ilha só ficou aberta por causa do pedido
+  // D4b: o cartão do fim abre a ilha e a deixa aberta até o OK (ou o próximo evento da sessão)
+  if (cartaoDoFim()) abrirSozinha();
+  else if (!mouseDentro) agendarRecolher(); // a ilha só ficou aberta por causa do pedido ou do fim
 }
 
 // os botões do pedido; o clique não chega ao gato (que seria cutucado)
@@ -218,9 +299,13 @@ async function expandir() {
   timerFim = setTimeout(() => { if (expandida) gatoPilula.ativo = false; }, duracaoAnimacao());
 }
 
+// o cartão do fim está na tela (D4b)
+const cartaoDoFim = () => el.classList.contains('terminou');
+
 function recolher() {
-  // com um pedido na tela a ilha não recolhe: os botões sumiriam (P1, emenda da E4)
-  if (!expandida || Ponte.abertos.length) return;
+  // com um pedido na tela a ilha não recolhe: os botões sumiriam (P1, emenda da E4); com o cartão
+  // do fim, também não: ele fica até o OK (D4b)
+  if (!expandida || Ponte.abertos.length || cartaoDoFim()) return;
   expandida = false;
   gatoPilula.ativo = true;
   el.classList.remove('expandida');
@@ -237,8 +322,9 @@ function agendarRecolher() {
   clearTimeout(timerRecolher);
   timerRecolher = setTimeout(recolher, ESPERA_RECOLHER);
 }
-// um pedido abre a ilha sozinho, sem o mouse (e sem roubar o foco: a janela não pega foco, D13)
-function abrirParaOPedido() {
+// um pedido ou o cartão do fim abrem a ilha sozinhos, sem o mouse (e sem roubar o foco: a janela
+// não pega foco, D13)
+function abrirSozinha() {
   if (!pausada) expandir();
 }
 
@@ -277,7 +363,7 @@ async function criarBandeja() {
       pausada = !pausada;
       if (pausada) await janela.hide();
       else await janela.show();
-      if (!pausada && Ponte.abertos.length) abrirParaOPedido(); // chegou um pedido durante a pausa
+      if (!pausada && (Ponte.abertos.length || cartaoDoFim())) abrirSozinha(); // chegou durante a pausa
       await pausar.setText(pausada ? TEXTOS.bandeja.mostrar : TEXTOS.bandeja.pausar);
     },
   });
@@ -342,6 +428,13 @@ janela.onScaleChanged(async () => {
   requestAnimationFrame(() => requestAnimationFrame(() => janela.show()));
   await criarBandeja();
   // por último: a ponte só liga quando a ilha já sabe mostrar o que chega
+  try {
+    Sessao = await import('./sessao.js');
+    sessoes = Sessao.criarSessoes();
+  } catch (err) {
+    // sem o módulo a ilha mostra só o status de agora, como na 001
+    console.error('[xereta] sessao.js', err?.name);
+  }
   try {
     const porta = await Ponte.ligar(aoMudarPonte);
     ociosa = { ...ociosa, subtitulo: TEXTOS.ilha.ouvindo(porta) };

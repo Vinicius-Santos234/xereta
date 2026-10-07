@@ -3,15 +3,18 @@
 // configurações. Os hooks que não são do Xereta (os do vault, por exemplo) nunca são tocados.
 
 /**
- * Os hooks da §4 da 001: evento do Claude Code, rota da ponte e se casa todas as ferramentas.
+ * Os hooks da §4 da 001: evento do Claude Code, rota da ponte e quais ferramentas casam.
  * Sem o SessionStart: o Claude Code ignora hook http nele (e no Setup), visto em 05/10 na 2.1.289.
  * A sessão aparece na ilha no primeiro UserPromptSubmit.
+ * O PostToolUse (D2 e D3 da 002): o resultado de cada ferramenta, com o id dela. Solta o pedido
+ * respondido no terminal e, nas edições, traz o patch real, de onde sai o +N −M.
  */
 export const HOOKS = [
   { evento: 'UserPromptSubmit', rota: 'evento' },
-  { evento: 'PreToolUse', rota: 'evento', todasAsFerramentas: true },
-  { evento: 'PostToolUseFailure', rota: 'evento', todasAsFerramentas: true },
-  { evento: 'PermissionRequest', rota: 'pedido', todasAsFerramentas: true },
+  { evento: 'PreToolUse', rota: 'evento', matcher: '*' },
+  { evento: 'PostToolUse', rota: 'evento', matcher: '*' },
+  { evento: 'PostToolUseFailure', rota: 'evento', matcher: '*' },
+  { evento: 'PermissionRequest', rota: 'pedido', matcher: '*' },
   { evento: 'Stop', rota: 'evento' },
   { evento: 'StopFailure', rota: 'evento' },
   { evento: 'SessionEnd', rota: 'evento' },
@@ -32,6 +35,9 @@ export class FormatoInesperado extends Error {
 
 const ehObjeto = v => v !== null && typeof v === 'object' && !Array.isArray(v);
 const copiar = v => JSON.parse(JSON.stringify(v));
+// JSON com as chaves em ordem: dois hooks iguais com as chaves noutra ordem dão o mesmo texto
+const canonico = v => JSON.stringify(v, (_, x) =>
+  (ehObjeto(x) ? Object.fromEntries(Object.keys(x).sort().map(k => [k, x[k]])) : x));
 
 // confere o formato antes de mexer: o que não for do jeito esperado fica intocado
 function conferir(settings) {
@@ -47,15 +53,17 @@ function conferir(settings) {
 }
 
 /** O grupo de um hook do Xereta, exatamente como vai para o settings.json. */
-export function grupo({ evento, rota, todasAsFerramentas }, { porta, token }) {
+export function grupo({ rota, matcher }, { porta, token }) {
+  // na ordem de chaves em que o settings.json real ficou (07/10): reinstalar sem mudança não
+  // mostra nada na prévia
   const hook = {
     type: 'http',
     url: `http://127.0.0.1:${porta}/fontes/claude-code/${rota}`,
+    timeout: TIMEOUT[rota],
     // o token vai literal, e não como $VARIAVEL: variável nova não chega a um Claude Code já aberto (D5)
     headers: { Authorization: `Bearer ${token}` },
-    timeout: TIMEOUT[rota],
   };
-  return todasAsFerramentas ? { matcher: '*', hooks: [hook] } : { hooks: [hook] };
+  return matcher ? { matcher, hooks: [hook] } : { hooks: [hook] };
 }
 
 // `criadas` diz quais chaves o próprio Xereta criou ao instalar: { hooks: bool, eventos: [nomes] }.
@@ -118,13 +126,13 @@ export function instalar(original, opcoes, criadas = null) {
  */
 export function estado(settings, opcoes) {
   conferir(settings);
-  // cada hook do Xereta encontrado, como "evento|matcher|hook"
+  // cada hook do Xereta encontrado, como "evento|matcher|hook"; a ordem das chaves não conta
   const achados = Object.entries(settings.hooks ?? {}).flatMap(([evento, grupos]) =>
-    grupos.flatMap(g => g.hooks.filter(ehDoXereta).map(h => `${evento}|${g.matcher ?? ''}|${JSON.stringify(h)}`)));
+    grupos.flatMap(g => g.hooks.filter(ehDoXereta).map(h => `${evento}|${g.matcher ?? ''}|${canonico(h)}`)));
   if (achados.length === 0) return 'desligado';
   const esperados = HOOKS.map(h => {
     const g = grupo(h, opcoes);
-    return `${h.evento}|${g.matcher ?? ''}|${JSON.stringify(g.hooks[0])}`;
+    return `${h.evento}|${g.matcher ?? ''}|${canonico(g.hooks[0])}`;
   });
   const iguais = achados.length === esperados.length && esperados.every(e => achados.includes(e));
   return iguais ? 'ligado' : 'diferente';

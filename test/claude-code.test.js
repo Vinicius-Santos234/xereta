@@ -10,9 +10,9 @@ const { ADAPTADOR_CLAUDE_CODE: A } = carregar(
 const base = { session_id: 's1', cwd: 'C:\\Users\\vinic\\projetos\\korus' };
 const hook = (nome, extra = {}) => A.traduzir({ ...base, hook_event_name: nome, ...extra });
 
-test('cada um dos 8 hooks vira o tipo certo', () => {
+test('cada um dos 9 hooks vira o tipo certo', () => {
   const esperado = {
-    SessionStart: 'inicio', UserPromptSubmit: 'pensando', PreToolUse: 'ferramenta',
+    SessionStart: 'inicio', UserPromptSubmit: 'pensando', PreToolUse: 'ferramenta', PostToolUse: 'concluiu',
     PostToolUseFailure: 'erro', PermissionRequest: 'permissao', Stop: 'fim', StopFailure: 'erro', SessionEnd: 'saida',
   };
   for (const [nome, tipo] of Object.entries(esperado)) {
@@ -90,4 +90,99 @@ test('qualquer outra decisão é "sem decisão", nunca allow', () => {
   for (const d of ['noTerminal', '', null, undefined, 'allow', 'constructor', '__proto__', 'toString']) {
     assert.equal(A.resposta(d), null, String(d));
   }
+});
+
+// os tool_response reais da 2.1.292 (07/10), com o caminho trocado
+const pos = (tool_name, tool_input, tool_response) =>
+  hook('PostToolUse', { tool_name, tool_input, tool_response, tool_use_id: 'toolu_1' });
+
+test('o passo leva a ferramenta e o id que liga o antes ao depois', () => {
+  const antes = hook('PreToolUse', { tool_name: 'Edit', tool_input: { file_path: 'C:/x/a.ts' }, tool_use_id: 'toolu_1' });
+  assert.equal(antes.ferramenta, 'Edit');
+  assert.equal(antes.passoId, 'toolu_1');
+  assert.equal(pos('Edit', { file_path: 'C:/x/a.ts' }, {}).passoId, 'toolu_1');
+  assert.equal(hook('PostToolUseFailure', { tool_name: 'Bash', tool_use_id: 'toolu_2' }).passoId, 'toolu_2');
+  assert.equal(hook('Stop').passoId, undefined);
+});
+
+test('+N −M do Edit sai do patch real, também com replace_all', () => {
+  const simples = pos('Edit', { file_path: 'C:/p/rep.txt', old_string: 'beta x', new_string: 'beta y', replace_all: false }, {
+    filePath: 'C:/p/rep.txt', oldString: 'beta x', newString: 'beta y', originalFile: 'alfa\nbeta x\ngama\n',
+    structuredPatch: [{ oldStart: 1, oldLines: 3, newStart: 1, newLines: 3, lines: [' alfa', '-beta x', '+beta y', ' gama'] }],
+    userModified: false, replaceAll: false,
+  });
+  assert.deepEqual({ ...simples.edicao.conta }, { mais: 1, menos: 1 });
+  assert.equal(simples.edicao.caminho, 'C:/p/rep.txt');
+  assert.equal(simples.resumo, 'Editando rep.txt');
+
+  const todas = pos('Edit', { file_path: 'C:/p/rep.txt', old_string: ' x', new_string: ' z', replace_all: true }, {
+    structuredPatch: [{ lines: [' alfa', ' beta y', ' gama', '-delta x', '-epsilon x', '+delta z', '+epsilon z'] }], replaceAll: true,
+  });
+  assert.deepEqual({ ...todas.edicao.conta }, { mais: 2, menos: 2 });
+});
+
+test('+N −M do Write: arquivo novo é tudo +, por cima de um existente é o patch', () => {
+  const novo = pos('Write', { file_path: 'C:/p/novo.txt', content: 'a\nb\nc\n' },
+    { type: 'create', filePath: 'C:/p/novo.txt', content: 'a\nb\nc\n', structuredPatch: [], originalFile: null });
+  assert.deepEqual({ ...novo.edicao.conta }, { mais: 3, menos: 0 });
+  const crlf = pos('Write', { file_path: 'C:/p/w.txt' }, { type: 'create', content: 'a\r\nb', structuredPatch: [] });
+  assert.deepEqual({ ...crlf.edicao.conta }, { mais: 2, menos: 0 });
+  const vazio = pos('Write', { file_path: 'C:/p/v.txt', content: '' }, { type: 'create', content: '', structuredPatch: [] });
+  assert.deepEqual({ ...vazio.edicao.conta }, { mais: 0, menos: 0 });
+  const sobre = pos('Write', { file_path: 'C:/p/sobre.txt', content: 'um\ndois\nTRES\nquatro\ncinco\n' }, {
+    type: 'update', structuredPatch: [{ lines: [' um', ' dois', '-tres', '+TRES', ' quatro', '+cinco'] }], originalFile: 'um\ndois\ntres\nquatro\n',
+  });
+  assert.deepEqual({ ...sobre.edicao.conta }, { mais: 2, menos: 1 });
+});
+
+test('patch em formato desconhecido fica sem conta, e nada quebra', () => {
+  for (const resposta of [undefined, null, 'texto', {}, { structuredPatch: 'x' }]) {
+    assert.equal(pos('Edit', { file_path: 'a' }, resposta).edicao.conta, null, JSON.stringify(resposta));
+  }
+  // linhas estranhas no meio de um patch válido são ignoradas
+  const r = pos('Edit', { file_path: 'a' }, { structuredPatch: [null, { lines: [42, '+a', '\\ No newline at end of file'] }] });
+  assert.deepEqual({ ...r.edicao.conta }, { mais: 1, menos: 0 });
+  assert.doesNotThrow(() => hook('PostToolUse', { tool_name: 'Edit' }));
+  assert.equal(hook('PostToolUse', { tool_name: 'Edit' }).edicao.caminho, '');
+});
+
+test('o Stop leva a mensagem final crua, ou null', () => {
+  assert.equal(hook('Stop', { last_assistant_message: 'Corrigi o **IVA**.' }).mensagem, 'Corrigi o **IVA**.');
+  assert.equal(hook('Stop').mensagem, null);
+  assert.equal(hook('Stop', { last_assistant_message: 42 }).mensagem, null);
+});
+
+test('PostToolUse de quem não edita é só "concluiu", sem conta', () => {
+  const r = hook('PostToolUse', { tool_name: 'Bash', tool_input: { command: 'npm test' }, tool_use_id: 'b1', tool_response: { stdout: 'ok' } });
+  assert.equal(r.tipo, 'concluiu');
+  assert.equal(r.passoId, 'b1');
+  assert.equal(r.edicao, undefined);
+});
+
+test('a assinatura liga o pedido ao PreToolUse da mesma chamada, e só a ela', () => {
+  const entrada = { command: 'git push origin main', description: 'x' };
+  const antes = hook('PreToolUse', { tool_name: 'Bash', tool_input: entrada, tool_use_id: 'p1' });
+  const pedido = hook('PermissionRequest', { tool_name: 'Bash', tool_input: { ...entrada } });
+  assert.equal(pedido.assinatura, antes.assinatura);
+  assert.notEqual(hook('PermissionRequest', { tool_name: 'Bash', tool_input: { command: 'git push' } }).assinatura, antes.assinatura);
+  assert.notEqual(hook('PermissionRequest', { tool_name: 'PowerShell', tool_input: entrada }).assinatura, antes.assinatura);
+  // o conteúdo não fica no evento: só tamanho e resumo
+  const grande = hook('PreToolUse', { tool_name: 'Write', tool_input: { file_path: 'a', content: 'x'.repeat(100_000) } });
+  assert.ok(grande.assinatura.length < 24);
+  assert.equal(hook('PostToolUse', { tool_name: 'Bash' }).assinatura, undefined);
+});
+
+test('pedidos de leitura e busca dizem o arquivo ou a pasta', () => {
+  const pedido = (tool_name, tool_input) => hook('PermissionRequest', { tool_name, tool_input }).pedido;
+  assert.deepEqual({ ...pedido('Read', { file_path: 'C:\\Users\\vinic\\Documents\\Claude\\CLAUDE.md' }) },
+    { verbo: 'ler', alvo: 'C:\\Users\\vinic\\Documents\\Claude\\CLAUDE.md' });
+  assert.equal(pedido('Read', { file_path: 'C:\\Users\\vinic\\projetos\\korus\\src\\a.ts' }).alvo, 'src/a.ts');
+  assert.deepEqual({ ...pedido('Grep', { pattern: 'TVA', path: 'C:\\Users\\vinic\\Documents\\Claude' }) },
+    { verbo: 'procurar', alvo: 'TVA em C:\\Users\\vinic\\Documents\\Claude' });
+  assert.equal(pedido('Glob', { pattern: '**/*.md' }).alvo, '**/*.md');
+});
+
+test('a Skill diz qual é', () => {
+  assert.equal(hook('PreToolUse', { tool_name: 'Skill', tool_input: { skill: 'codex:rescue', args: 'x' } }).resumo, 'Usando a skill codex:rescue');
+  assert.equal(hook('PreToolUse', { tool_name: 'Skill', tool_input: {} }).resumo, 'Usando uma skill');
 });

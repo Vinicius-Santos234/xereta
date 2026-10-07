@@ -12,9 +12,10 @@ const raiz = new URL('../', import.meta.url);
  * as globais pedidas. `const` de nível de topo não vira propriedade do contexto, por isso cada nome
  * é lido com uma avaliação no próprio contexto.
  */
-export function carregar(arquivos, nomes) {
-  // as globais do navegador que os scripts usam (o contexto do vm nasce sem elas)
-  const contexto = vm.createContext({ console, URL });
+export function carregar(arquivos, nomes, globais = {}) {
+  // as globais do navegador que os scripts usam (o contexto do vm nasce sem elas); `globais`
+  // completa com o que o teste simula (o window.__TAURI__ da ponte, por exemplo)
+  const contexto = vm.createContext({ console, URL, performance, ...globais });
   for (const arquivo of arquivos) {
     const caminho = fileURLToPath(new URL(arquivo, raiz));
     vm.runInContext(readFileSync(caminho, 'utf8'), contexto, { filename: caminho });
