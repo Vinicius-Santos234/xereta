@@ -183,7 +183,7 @@ function mostrarEvento(evento) {
   }
 }
 
-// D4, D4b: "korus terminou · 9 passos · 2 arquivos (+12 −4)", a mensagem final e o OK
+// D4, D4b: "vitrine terminou · 9 passos · 2 arquivos (+12 −4)", a mensagem final e o OK
 function mostrarFim(evento, sessao) {
   const { falhou, mensagem } = sessao.fim;
   definirEstado(falhou ? 'erro' : 'feliz');
@@ -240,7 +240,7 @@ function mostrarConta() {
   $('bt-sessoes').textContent = TEXTOS.cartao.sessoes(n);
 }
 
-// o pedido na tela: "korus · quer rodar · Claude Code", o alvo e os botões
+// o pedido na tela: "vitrine · quer rodar · Claude Code", o alvo e os botões
 function mostrarPedido(evento, mais) {
   definirEstado('esperando');
   const { verbo, alvo } = evento.pedido ?? { verbo: '', alvo: evento.resumo };

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 132" width="640" height="132" role="img" aria-labelledby="titulo descricao">
   <title id="titulo">Xereta</title>
-  <desc id="descricao">A ilha do Xereta no topo da tela: um gato frajola numa pílula escura que conta o que o Claude Code está fazendo. Rodando npm test, editando billing.ts com três linhas a mais e uma a menos, pedindo licença para um git push e, no fim, Prontinho.</desc>
+  <desc id="descricao">A ilha do Xereta no topo da tela: um gato frajola numa pílula escura que conta o que o Claude Code está fazendo. Rodando npm test, editando frete.ts com três linhas a mais e uma a menos, pedindo licença para um git push e, no fim, Prontinho.</desc>
   <!--
     A ilha passa por quatro momentos num ciclo de 12 s. Regras (vault: svg-animado-no-readme-do-github):
     o tempo de cada parte está dentro do próprio @keyframes, em porcentagem do ciclo comum (delay só
@@ -68,22 +68,22 @@
 
   <!-- 1. trabalhando -->
   <g class="e1">
-    <text class="texto" x="172" y="62"><tspan class="fraco">korus · 3 passos</tspan></text>
+    <text class="texto" x="172" y="62"><tspan class="fraco">vitrine · 3 passos</tspan></text>
     <text class="texto" x="172" y="90">› Rodando npm test</text>
   </g>
   <!-- 2. editando, com o +N −M -->
   <g class="e2">
     <text class="texto" x="172" y="62"><tspan class="ok">✓</tspan><tspan class="fraco"> Rodando npm test</tspan></text>
-    <text class="texto" x="172" y="90">› Editando billing.ts <tspan class="mais">+3</tspan> <tspan class="menos">−1</tspan></text>
+    <text class="texto" x="172" y="90">› Editando frete.ts <tspan class="mais">+3</tspan> <tspan class="menos">−1</tspan></text>
   </g>
   <!-- 3. pedindo licença -->
   <g class="e3">
-    <text class="texto" x="172" y="62"><tspan class="fraco">korus · quer rodar</tspan></text>
+    <text class="texto" x="172" y="62"><tspan class="fraco">vitrine · quer rodar</tspan></text>
     <text class="mono" x="172" y="90">git push origin main</text>
   </g>
   <!-- 4. pronto -->
   <g class="e4">
-    <text class="texto" x="172" y="62"><tspan class="fraco">korus terminou · 5 passos</tspan></text>
+    <text class="texto" x="172" y="62"><tspan class="fraco">vitrine terminou · 5 passos</tspan></text>
     <text class="texto" x="172" y="90">Prontinho! <tspan class="fraco">48 testes passando.</tspan></text>
   </g>
 </svg>

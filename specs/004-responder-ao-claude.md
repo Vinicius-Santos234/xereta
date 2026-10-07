@@ -54,7 +54,7 @@ sessão segue.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ [gato ?]  korus pergunta                                1 de 2 │
+│ [gato ?]  vitrine pergunta                                1 de 2 │
 │           Qual banco para o catálogo de cursos?                │
 │   ( Postgres full-text )  ( Meilisearch )  ( Algolia )         │
 │   [ escrever outra resposta… ]                                 │

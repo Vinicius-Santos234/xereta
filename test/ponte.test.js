@@ -27,8 +27,8 @@ async function montar() {
   return { Ponte, respostas, mudancas, avisar };
 }
 
-const base = { session_id: 's1', cwd: 'C:/korus' };
-const ler = arquivo => ({ tool_name: 'Read', tool_input: { file_path: `C:/korus/${arquivo}` } });
+const base = { session_id: 's1', cwd: 'C:/vitrine' };
+const ler = arquivo => ({ tool_name: 'Read', tool_input: { file_path: `C:/vitrine/${arquivo}` } });
 const evento = (corpo) => ({ aviso: 'evento', fonte: 'claude-code', corpo: { ...base, ...corpo } });
 const pre = (id, f) => evento({ hook_event_name: 'PreToolUse', tool_use_id: id, ...f });
 const pos = (id, f) => evento({ hook_event_name: 'PostToolUse', tool_use_id: id, ...f, tool_response: {} });

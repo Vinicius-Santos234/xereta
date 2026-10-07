@@ -13,10 +13,10 @@ test('CRLF e LF contam como o mesmo texto', () => {
 });
 
 test('uma linha trocada é −1 +1, com os números de linha certos', () => {
-  const ops = diffLinhas('const TVA = 0.196;\nfim\n', 'const TVA = 0.20;\nfim\n');
+  const ops = diffLinhas('const FRETE = 0.196;\nfim\n', 'const FRETE = 0.20;\nfim\n');
   assert.deepEqual(contar(ops), { mais: 1, menos: 1 });
-  assert.deepEqual(ops.find(o => o.tipo === '-'), { tipo: '-', texto: 'const TVA = 0.196;', a: 1, b: null });
-  assert.deepEqual(ops.find(o => o.tipo === '+'), { tipo: '+', texto: 'const TVA = 0.20;', a: null, b: 1 });
+  assert.deepEqual(ops.find(o => o.tipo === '-'), { tipo: '-', texto: 'const FRETE = 0.196;', a: 1, b: null });
+  assert.deepEqual(ops.find(o => o.tipo === '+'), { tipo: '+', texto: 'const FRETE = 0.20;', a: null, b: 1 });
 });
 
 test('inserir no meio não marca o resto como mudado', () => {

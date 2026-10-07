@@ -9,7 +9,7 @@
 
 ## 1. Objetivo
 
-Na 001 você aprova pela ilha, mas aprova **no escuro**: vê `Editar billing.ts` e não vê o que
+Na 001 você aprova pela ilha, mas aprova **no escuro**: vê `Editar frete.ts` e não vê o que
 muda. A 003 dá à ilha o que é preciso para decidir bem:
 
 1. **O diff no próprio pedido**, antes do Permitir.
@@ -59,7 +59,7 @@ e não existe lista de regras. Nada parecido com o nível de risco apareceu.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ [gato arrepiado]  korus quer EDITAR  .env           RISCO ALTO │
+│ [gato arrepiado]  vitrine quer EDITAR  .env           RISCO ALTO │
 │                   mexe em arquivo de segredo                   │
 │ ┌──────────────────────────────────────────────────────────┐ │
 │ │ 12  DATABASE_URL=postgres://…                            │ │

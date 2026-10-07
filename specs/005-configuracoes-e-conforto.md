@@ -127,7 +127,7 @@ hooks, com prévia.
 - O "Som" da bandeja silencia e devolve todos os sons com um clique.
 
 ### F4b — Modo apresentação (ideia de 05/10)
-- Ligado pela bandeja: um pedido de `Edit` em `C:\Users\…\korus\.env` mostra só `.env`, um Bash
+- Ligado pela bandeja: um pedido de `Edit` em `C:\Users\…\vitrine\.env` mostra só `.env`, um Bash
   mostra só o programa, e a mensagem final e o diff aparecem como "oculto no modo apresentação".
   Permitir e Negar continuam funcionando.
 - Um texto com `sk-…`, `ghp_…` ou um hexadecimal de 64 caracteres aparece como `•••` (com um teste

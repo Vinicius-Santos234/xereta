@@ -14,7 +14,7 @@ contar **a sessão**: o que já foi feito, quanto mudou e como terminou. E faz o
 cada momento de um jeito que se lê até na pílula de 34 px.
 
 **Uma frase de sucesso:** volto do café, olho a pílula e vejo pelo gato que a sessão terminou.
-Passo o mouse e leio: *"korus · 7 passos · billing.ts +3 −1 · Corrigi o arredondamento, 48
+Passo o mouse e leio: *"vitrine · 7 passos · frete.ts +3 −1 · Corrigi o cálculo do frete, 48
 testes passando."* Não preciso abrir o terminal para saber o que aconteceu.
 
 ---
@@ -57,15 +57,15 @@ testes passando."* Não preciso abrir o terminal para saber o que aconteceu.
 
 **Ilha aberta, trabalhando:**
 ```
- [gato]  korus · Claude Code                         7 passos · 2 sessões
-         ✓ Editando billing.ts   +3 −1
+ [gato]  vitrine · Claude Code                         7 passos · 2 sessões
+         ✓ Editando frete.ts   +3 −1
          › Rodando npm test
 ```
 
 **Ilha aberta, no fim:**
 ```
- [gato feliz]  korus terminou · 9 passos · 2 arquivos (+12 −4)
-               Corrigi o arredondamento do IVA, 48 testes passando…   [ OK ]
+ [gato feliz]  vitrine terminou · 9 passos · 2 arquivos (+12 −4)
+               Corrigi o cálculo do frete, 48 testes passando…   [ OK ]
 ```
 
 **Novos estados do gato** (somam-se aos 6 estados e às 8 caras):
@@ -121,10 +121,10 @@ enquanto está recolhida (D10).
 >   e a mensagem sem Markdown (título e item de lista viram frase; bloco de código sai). Até 20
 >   sessões; a que mudou há mais tempo sai primeiro.
 > - **Ilha:** o cartão mostra o passo anterior e o atual (o status que não é passo, como "No
->   terminal: …", entra como a linha atual); o do fim mostra "korus terminou · 6 passos · 2
+>   terminal: …", entra como a linha atual); o do fim mostra "vitrine terminou · 6 passos · 2
 >   arquivos (+9 −3)", duas linhas da mensagem e o OK. Um pedido continua tomando a ilha inteira.
 > - **Conferido com uma sessão simulada pela ponte** (fotos da tela a 125%): ✗ no `npm test` que
->   falhou, `+3 −1` e `+2 −2` no `billing.ts`, a soma do fim certa, o pedido âmbar por cima do
+>   falhou, `+3 −1` e `+2 −2` no `frete.ts`, a soma do fim certa, o pedido âmbar por cima do
 >   cartão e, depois de 15 s, "› No terminal: Rodando git push…" com resposta vazia. A sessão
 >   real desta conversa também apareceu no cartão, com os passos certos. **Testes em JS: 44 → 66.**
 > - **Teste na mão por você (07/10), sessão real em `Desktop\Teste`:** `replace_all`, arquivo
@@ -187,8 +187,8 @@ enquanto está recolhida (D10).
 > a seguinte (`seguinte`), com 5 testes novos; a ilha guarda o último status **de cada sessão** (antes
 > era um só, e uma sessão apagava a outra). Na pílula, um "3" pequeno; na ilha aberta, "3 sessões ›"
 > ao lado dos passos, que some durante um pedido. **Conferido com sessões simuladas e cliques de
-> verdade na tela:** a que mudou por último aparece; três cliques dão a volta (rdo → korus → esta
-> conversa); o cartão do fim da korus fica na frente da rdo trabalhando e abre a ilha sozinho; o OK
+> verdade na tela:** a que mudou por último aparece; três cliques dão a volta (rdo → vitrine → esta
+> conversa); o cartão do fim da vitrine fica na frente da rdo trabalhando e abre a ilha sozinho; o OK
 > passa para a outra; o `SessionEnd` tira da conta (3 → 2). **Testes em JS: 86.**
 >
 > **Achado no caminho, do teste e não do app:** um cursor que **pula** para fora da ilha (o

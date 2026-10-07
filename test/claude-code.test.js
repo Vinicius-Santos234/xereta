@@ -7,7 +7,7 @@ const { ADAPTADOR_CLAUDE_CODE: A } = carregar(
   ['ADAPTADOR_CLAUDE_CODE'],
 );
 
-const base = { session_id: 's1', cwd: 'C:\\Users\\vinic\\projetos\\korus' };
+const base = { session_id: 's1', cwd: 'C:\\Users\\vinic\\projetos\\vitrine' };
 const hook = (nome, extra = {}) => A.traduzir({ ...base, hook_event_name: nome, ...extra });
 
 test('cada um dos 9 hooks vira o tipo certo', () => {
@@ -20,7 +20,7 @@ test('cada um dos 9 hooks vira o tipo certo', () => {
     assert.equal(e.tipo, tipo, nome);
     assert.equal(e.fonte, 'claude-code');
     assert.equal(e.sessao, 's1');
-    assert.equal(e.projeto, 'korus');
+    assert.equal(e.projeto, 'vitrine');
   }
 });
 
@@ -33,10 +33,10 @@ test('o resumo de cada ferramenta', () => {
   const casos = [
     ['Bash', { command: 'npm test' }, 'Rodando npm test'],
     ['PowerShell', { command: 'git status', description: 'x' }, 'Rodando git status'],
-    ['Read', { file_path: 'C:\\x\\src\\billing.ts' }, 'Lendo billing.ts'],
-    ['Edit', { file_path: '/home/x/billing.ts' }, 'Editando billing.ts'],
+    ['Read', { file_path: 'C:\\x\\src\\frete.ts' }, 'Lendo frete.ts'],
+    ['Edit', { file_path: '/home/x/frete.ts' }, 'Editando frete.ts'],
     ['Write', { file_path: 'C:\\x\\novo.md' }, 'Escrevendo novo.md'],
-    ['Grep', { pattern: 'TVA' }, 'Procurando TVA'],
+    ['Grep', { pattern: 'FRETE' }, 'Procurando FRETE'],
     ['WebFetch', { url: 'https://docs.claude.com/hooks?x=1' }, 'Abrindo docs.claude.com'],
     ['Task', {}, 'Chamando um ajudante'],
     ['FerramentaNova', {}, 'Usando FerramentaNova'],
@@ -62,7 +62,7 @@ test('campos que faltam ou vêm nulos não quebram o adaptador', () => {
   assert.doesNotThrow(() => hook('PreToolUse', { tool_name: 'Read' }));
   assert.equal(hook('PreToolUse', { tool_name: 'Bash', tool_input: null }).resumo, 'Rodando');
   assert.equal(A.traduzir({ hook_event_name: 'Stop' }).projeto, undefined);
-  assert.equal(A.traduzir({ hook_event_name: 'Stop', cwd: 'C:\\x\\korus\\' }).projeto, 'korus');
+  assert.equal(A.traduzir({ hook_event_name: 'Stop', cwd: 'C:\\x\\vitrine\\' }).projeto, 'vitrine');
 });
 
 test('o pedido diz o verbo e o alvo', () => {
@@ -72,10 +72,10 @@ test('o pedido diz o verbo e o alvo', () => {
   assert.deepEqual({ ...pedido('Bash', { command: "cat <<'EOF'\nsegredo\nEOF" }) }, { verbo: 'rodar', alvo: "cat <<'EOF' …" });
   assert.equal(pedido('Bash', { command: 'x'.repeat(900) }).alvo.length, 500);
   // dentro do projeto: relativo; fora: o caminho inteiro
-  assert.deepEqual({ ...pedido('Edit', { file_path: 'C:\\Users\\vinic\\projetos\\korus\\src\\billing.ts' }) }, { verbo: 'editar', alvo: 'src/billing.ts' });
-  assert.equal(pedido('Write', { file_path: 'c:/users/vinic/projetos/KORUS/.env' }).alvo, '.env');
+  assert.deepEqual({ ...pedido('Edit', { file_path: 'C:\\Users\\vinic\\projetos\\vitrine\\src\\frete.ts' }) }, { verbo: 'editar', alvo: 'src/frete.ts' });
+  assert.equal(pedido('Write', { file_path: 'c:/users/vinic/projetos/VITRINE/.env' }).alvo, '.env');
   assert.equal(pedido('Write', { file_path: 'C:\\Users\\vinic\\.ssh\\config' }).alvo, 'C:\\Users\\vinic\\.ssh\\config');
-  assert.equal(pedido('Write', { file_path: 'C:\\Users\\vinic\\projetos\\korus-velho\\a.txt' }).alvo, 'C:\\Users\\vinic\\projetos\\korus-velho\\a.txt', 'pasta vizinha com o mesmo começo não é o projeto');
+  assert.equal(pedido('Write', { file_path: 'C:\\Users\\vinic\\projetos\\vitrine-velho\\a.txt' }).alvo, 'C:\\Users\\vinic\\projetos\\vitrine-velho\\a.txt', 'pasta vizinha com o mesmo começo não é o projeto');
   assert.deepEqual({ ...pedido('FerramentaNova', {}) }, { verbo: 'usar', alvo: 'FerramentaNova' });
   assert.doesNotThrow(() => pedido('Bash', null));
   assert.equal(hook('PreToolUse', { tool_name: 'Bash', tool_input: { command: 'ls' } }).pedido, undefined);
@@ -147,7 +147,7 @@ test('patch em formato desconhecido fica sem conta, e nada quebra', () => {
 });
 
 test('o Stop leva a mensagem final crua, ou null', () => {
-  assert.equal(hook('Stop', { last_assistant_message: 'Corrigi o **IVA**.' }).mensagem, 'Corrigi o **IVA**.');
+  assert.equal(hook('Stop', { last_assistant_message: 'Corrigi o **frete**.' }).mensagem, 'Corrigi o **frete**.');
   assert.equal(hook('Stop').mensagem, null);
   assert.equal(hook('Stop', { last_assistant_message: 42 }).mensagem, null);
 });
@@ -192,9 +192,9 @@ test('pedidos de leitura e busca dizem o arquivo ou a pasta', () => {
   const pedido = (tool_name, tool_input) => hook('PermissionRequest', { tool_name, tool_input }).pedido;
   assert.deepEqual({ ...pedido('Read', { file_path: 'C:\\Users\\vinic\\Documents\\Claude\\CLAUDE.md' }) },
     { verbo: 'ler', alvo: 'C:\\Users\\vinic\\Documents\\Claude\\CLAUDE.md' });
-  assert.equal(pedido('Read', { file_path: 'C:\\Users\\vinic\\projetos\\korus\\src\\a.ts' }).alvo, 'src/a.ts');
-  assert.deepEqual({ ...pedido('Grep', { pattern: 'TVA', path: 'C:\\Users\\vinic\\Documents\\Claude' }) },
-    { verbo: 'procurar', alvo: 'TVA em C:\\Users\\vinic\\Documents\\Claude' });
+  assert.equal(pedido('Read', { file_path: 'C:\\Users\\vinic\\projetos\\vitrine\\src\\a.ts' }).alvo, 'src/a.ts');
+  assert.deepEqual({ ...pedido('Grep', { pattern: 'FRETE', path: 'C:\\Users\\vinic\\Documents\\Claude' }) },
+    { verbo: 'procurar', alvo: 'FRETE em C:\\Users\\vinic\\Documents\\Claude' });
   assert.equal(pedido('Glob', { pattern: '**/*.md' }).alvo, '**/*.md');
 });
 

@@ -24,24 +24,24 @@ e deixa você dizer *pode* ou *não* para um pedido de permissão sem voltar ao 
 
 ## Um turno de trabalho, visto do topo da tela
 
-Você pede *"corrige o arredondamento do IVA e roda os testes"* e vai ler outra coisa. A pílula
+Você pede *"corrige o cálculo do frete e roda os testes"* e vai ler outra coisa. A pílula
 fica lá em cima, do tamanho de um notificador, e vai contando.
 
 <table>
 <tr>
-<td width="56%"><img src="docs/readme/cartao.png" alt="Ilha aberta: korus, 3 passos; Editando billing.ts +3 −1 com um tique verde; Rodando npm test com um X vermelho"></td>
+<td width="56%"><img src="docs/readme/cartao.png" alt="Ilha aberta: vitrine, 3 passos; Editando frete.ts +3 −1 com um tique verde; Rodando npm test com um X vermelho"></td>
 <td><b>Passe o mouse e ela abre.</b> O passo de antes e o de agora, o <code>+3 −1</code> de cada edição (contado do patch que o Claude Code de fato gravou) e o ✗ do teste que falhou. O gato fica com a cara de quem viu.</td>
 </tr>
 <tr>
-<td><img src="docs/readme/pedido.png" alt="Ilha âmbar: korus quer rodar git push origin main, com os botões Negar, Permitir e No terminal"></td>
+<td><img src="docs/readme/pedido.png" alt="Ilha âmbar: vitrine quer rodar git push origin main, com os botões Negar, Permitir e No terminal"></td>
 <td><b>Na hora do <code>git push</code>, ela pede licença.</b> Abre sozinha, fica âmbar e mostra o comando inteiro. Você responde dali, sem mudar de janela, e ela nunca rouba o foco de quem está digitando. O terminal pergunta junto, e vale quem responder primeiro.</td>
 </tr>
 <tr>
-<td><img src="docs/readme/fim.png" alt="Ilha com o gato feliz: korus terminou, 6 passos, 2 arquivos (+9 −3), a mensagem final e o botão OK"></td>
+<td><img src="docs/readme/fim.png" alt="Ilha com o gato feliz: vitrine terminou, 6 passos, 2 arquivos (+9 −3), a mensagem final e o botão OK"></td>
 <td><b>Terminou?</b> A ilha abre com o resumo da sessão e o começo do que o Claude disse no fim, sem o Markdown. Fica aberta até você dar OK, para quem estava longe da tela ainda encontrar o resultado.</td>
 </tr>
 <tr>
-<td><img src="docs/readme/sessoes.png" alt="Ilha mostrando a sessão korus com o botão 3 sessões"></td>
+<td><img src="docs/readme/sessoes.png" alt="Ilha mostrando a sessão vitrine com o botão 3 sessões"></td>
 <td><b>Mais de uma sessão?</b> Ela mostra a que mudou por último, e um clique em <i>3 sessões ›</i> passa para a próxima. Fechar o terminal de uma sessão tira ela da conta na hora.</td>
 </tr>
 </table>
@@ -147,13 +147,13 @@ Com o app aberto, mande um evento como se fosse um hook:
 
 ```powershell
 $cfg = Get-Content "$env:APPDATA\app.xereta.ilha\config.json" | ConvertFrom-Json
-$corpo = @{ hook_event_name = 'PreToolUse'; session_id = 'teste'; cwd = 'C:\projetos\korus'
+$corpo = @{ hook_event_name = 'PreToolUse'; session_id = 'teste'; cwd = 'C:\projetos\vitrine'
             tool_name = 'Bash'; tool_use_id = 't1'; tool_input = @{ command = 'npm test' } } | ConvertTo-Json
 Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:$($cfg.porta)/fontes/claude-code/evento" `
   -Headers @{ Authorization = "Bearer $($cfg.token)" } -ContentType 'application/json' -Body $corpo
 ```
 
-A ilha mostra "korus · Claude Code · Rodando npm test". Trocando `evento` por `pedido` e o
+A ilha mostra "vitrine · Claude Code · Rodando npm test". Trocando `evento` por `pedido` e o
 `hook_event_name` por `PermissionRequest`, a chamada fica esperando até você responder pelos
 botões da ilha (ou até 15 s).
 
