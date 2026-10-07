@@ -84,6 +84,76 @@ test('duas chamadas iguais em paralelo ficam cada uma com um id', async () => {
   assert.deepEqual([...Ponte.abertos].map(p => p.evento.passoId), ['x1', 'x2']);
 });
 
+test('uma chamada idêntica depois de um pedido respondido não herda o id dele (Codex, 07/10)', async () => {
+  const { Ponte, respostas, avisar } = await montar();
+  const push = { tool_name: 'Bash', tool_input: { command: 'git push' } };
+  avisar(pre('a', push));
+  avisar(pedido(1, push));
+  await Ponte.responder(1, 'permitir'); // A permitida, ainda rodando
+  avisar(pre('b', push));
+  avisar(pedido(2, push));
+  assert.equal(Ponte.abertos[0].evento.passoId, 'b');
+  avisar(pos('a', push)); // o resultado de A não solta o pedido de B
+  assert.deepEqual(ids(Ponte), [2]);
+  assert.equal(respostas.length, 1);
+});
+
+test('entrada reescrita por outro hook: vale a única ferramenta igual em curso (Codex, 07/10)', async () => {
+  const { Ponte, avisar } = await montar();
+  avisar(pre('a', { tool_name: 'Bash', tool_input: { command: 'echo antigo' } }));
+  avisar(pre('r', ler('x.md')));
+  avisar(pedido(1, { tool_name: 'Bash', tool_input: { command: 'echo novo' } }));
+  assert.equal(Ponte.abertos[0].evento.passoId, 'a');
+  avisar(pos('a', { tool_name: 'Bash', tool_input: { command: 'echo novo' } }));
+  assert.deepEqual(ids(Ponte), []);
+});
+
+test('entrada reescrita com duas ferramentas iguais em curso: fica sem id, e a irmã não o solta', async () => {
+  const { Ponte, avisar } = await montar();
+  avisar(pre('a', { tool_name: 'Bash', tool_input: { command: 'echo 1' } }));
+  avisar(pre('b', { tool_name: 'Bash', tool_input: { command: 'echo 2' } }));
+  avisar(pedido(1, { tool_name: 'Bash', tool_input: { command: 'echo 3' } }));
+  assert.equal(Ponte.abertos[0].evento.passoId, undefined);
+  avisar(pos('a', { tool_name: 'Bash', tool_input: { command: 'echo 1' } }));
+  assert.deepEqual(ids(Ponte), [1]);
+});
+
+test('as entradas que colidiam no hash vão cada uma para a sua ferramenta (Codex, 07/10)', async () => {
+  const { Ponte, avisar } = await montar();
+  const um = { tool_name: 'Bash', tool_input: { command: 'echo 409ca48055951e46' } };
+  const dois = { tool_name: 'Bash', tool_input: { command: 'echo 1005047aa1c99bdf' } };
+  avisar(pre('a', um));
+  avisar(pre('b', dois));
+  avisar(pedido(2, dois));
+  assert.equal(Ponte.abertos[0].evento.passoId, 'b');
+  avisar(pos('a', um));
+  assert.deepEqual(ids(Ponte), [2]);
+});
+
+test('ferramentas concluídas não deixam sessões vazias guardadas; no máximo 32 (Codex, 07/10)', async () => {
+  const { Ponte, avisar } = await montar();
+  for (let i = 0; i < 100; i++) {
+    const sessao = { session_id: `s${i}` };
+    avisar({ ...pre('a', ler('a.md')), corpo: { ...base, ...sessao, hook_event_name: 'PreToolUse', tool_use_id: 'a', ...ler('a.md') } });
+    avisar({ ...pos('a', ler('a.md')), corpo: { ...base, ...sessao, hook_event_name: 'PostToolUse', tool_use_id: 'a', ...ler('a.md'), tool_response: {} } });
+  }
+  assert.equal(Ponte.sessoesEmCurso, 0);
+  for (let i = 0; i < 100; i++) {
+    avisar({ ...pre('a', ler('a.md')), corpo: { ...base, session_id: `t${i}`, hook_event_name: 'PreToolUse', tool_use_id: 'a', ...ler('a.md') } });
+  }
+  assert.equal(Ponte.sessoesEmCurso, 32);
+});
+
+test('a pergunta do Claude volta na hora para o terminal e vira aviso na ilha', async () => {
+  const { Ponte, respostas, mudancas, avisar } = await montar();
+  avisar(pre('q', { tool_name: 'AskUserQuestion', tool_input: { questions: [{ question: 'Qual banco?' }] } }));
+  avisar(pedido(9, { tool_name: 'AskUserQuestion', tool_input: { questions: [{ question: 'Qual banco?' }] } }));
+  assert.deepEqual(ids(Ponte), []);
+  assert.deepEqual(respostas, [{ id: 9, corpo: null }]);
+  assert.equal(mudancas.at(-1).evento.tipo, 'pergunta');
+  assert.equal(mudancas.at(-1).evento.resumo, 'Pergunta no terminal: Qual banco?');
+});
+
 test('pedido sem PreToolUse conhecido: só a sessão mudando o solta', async () => {
   const { Ponte, avisar } = await montar();
   avisar(pedido(1, ler('a.md')));

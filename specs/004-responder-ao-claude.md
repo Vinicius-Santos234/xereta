@@ -5,6 +5,13 @@ ilha grande dela.
 **Origem:** `ideias/coucou-instagram.md` (P8). O Coucou faz isso desde a 0.1.3, e o mecanismo foi
 lido no código dele em 05/10.
 
+> **Visto em 07/10 (Claude Code 2.1.292):** o `AskUserQuestion` dispara um `PermissionRequest`.
+> A ilha o mostrou como pedido, você clicou em Permitir, e o Claude Code ignorou o `allow` (nenhuma
+> decisão de hook no transcript) e esperou a escolha no terminal. Desde então (F2 da 002), a ilha
+> devolve a pergunta ao terminal na hora e só avisa "Pergunta no terminal: …". O que esta spec
+> faz é responder de verdade, pelo `PreToolUse` com `updatedInput.answers`. A V1 ficou em parte
+> respondida: `tool_input.questions[].question` existe (e `header`, `options`, `multiSelect`).
+
 ---
 
 ## 1. Objetivo

@@ -59,13 +59,15 @@ const ADAPTADOR_CLAUDE_CODE = (() => {
 
   // O PermissionRequest não traz `tool_use_id` (visto na E3). Para saber de qual ferramenta é o
   // pedido, a ponte compara esta assinatura (o nome e a entrada) com a do PreToolUse, que traz o
-  // id. Só um resumo (tamanho e FNV-1a do JSON), para não guardar o conteúdo de um Write duas vezes.
-  const assinar = (nome, entrada) => {
-    const texto = JSON.stringify([nome ?? null, entrada ?? null]);
-    let h = 0x811c9dc5;
-    for (let i = 0; i < texto.length; i++) h = Math.imul(h ^ texto.charCodeAt(i), 0x01000193);
-    return `${texto.length}:${(h >>> 0).toString(16)}`;
+  // id. É o JSON inteiro, com as chaves em ordem: um resumo (hash) pode colidir, e a ordem das
+  // chaves não pode fazer duas entradas iguais parecerem diferentes. Fica só na memória (D9) e só
+  // até a ferramenta terminar.
+  const ordenado = v => {
+    if (Array.isArray(v)) return v.map(ordenado);
+    if (v === null || typeof v !== 'object') return v;
+    return Object.fromEntries(Object.keys(v).sort().map(k => [k, ordenado(v[k])]));
   };
+  const assinar = (nome, entrada) => JSON.stringify([nome ?? null, ordenado(entrada ?? null)]);
 
   // a decisão da ilha para o `behavior` do hook; qualquer outra coisa vira "sem decisão" (D6)
   const COMPORTAMENTO = { permitir: 'allow', negar: 'deny' };
@@ -92,11 +94,19 @@ const ADAPTADOR_CLAUDE_CODE = (() => {
           return { ...concluiu, edicao: { caminho, conta: contarEdicao(h.tool_response) } };
         }
         case 'PostToolUseFailure': return passo('erro', T.eventos.falhou(h.tool_name));
-        case 'PermissionRequest': return {
-          ...passo('permissao', resumirFerramenta(h.tool_name, h.tool_input)),
-          assinatura: assinar(h.tool_name, h.tool_input),
-          pedido: descreverPedido(h.tool_name, h.tool_input, h.cwd),
-        };
+        // A pergunta do Claude (AskUserQuestion) também chega como PermissionRequest, mas Permitir
+        // não a responde (visto em 07/10: o Claude Code ignorou o allow e esperou a escolha no
+        // terminal). Ela vira um aviso, e não um pedido com botões (a 004 responde pela ilha).
+        case 'PermissionRequest': {
+          if (h.tool_name === 'AskUserQuestion') {
+            return passo('pergunta', T.eventos.pergunta(linha(h.tool_input?.questions?.[0]?.question ?? '')));
+          }
+          return {
+            ...passo('permissao', resumirFerramenta(h.tool_name, h.tool_input)),
+            assinatura: assinar(h.tool_name, h.tool_input),
+            pedido: descreverPedido(h.tool_name, h.tool_input, h.cwd),
+          };
+        }
         // a mensagem vai crua: quem mostra tira o Markdown (sessao.js)
         case 'Stop': return {
           ...evento('fim', T.eventos.fim),

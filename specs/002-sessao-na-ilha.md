@@ -1,6 +1,6 @@
 # Spec 002 — A ilha conta a sessão
 
-**Status:** **aprovada em 07/10**, em andamento: **F1 concluída em 07/10**; a seguir, a F2. Emenda de 07/10 na D3 (o `+N −M` vem do
+**Status:** **aprovada em 07/10**, em andamento: **F1 e F2 concluídas em 07/10**; a seguir, a F3 (o gato, protótipo primeiro). Emenda de 07/10 na D3 (o `+N −M` vem do
 `PostToolUse`).
 **Origem:** `ideias/coucou-instagram.md` (P3, P4, P5, P6, P7, P10 e P11) e `ideias/mascote.md`.
 **Depende de:** E3 da 001, que é quando os campos reais dos hooks são vistos pela primeira vez.
@@ -174,6 +174,57 @@ enquanto está recolhida (D10).
   antes, a F1 da 003 vem junto.
 
 ### F2 — Várias sessões
+> **07/10 — F2 concluída** (testada por você com duas sessões reais; V6 respondida). Três detalhes que a D6 não
+> dizia, decididos por mim (fáceis de mudar):
+> 1. **O cartão do fim esperando o OK ganha das outras sessões.** Se a A termina enquanto a B
+>    trabalha, a ilha mostra o resultado da A (D4b), e o "2 sessões ›" leva à B. Depois do OK, volta
+>    a valer a que mudou por último; se não há outra, a ilha fica quieta.
+> 2. **A troca por clique vale enquanto a ilha está aberta.** Ao recolher, volta à automática.
+> 3. **Sem evento nenhum por 1 hora, a sessão sai da conta** (volta no próximo evento), porque o
+>    terminal fechado talvez não mande o `SessionEnd` (V6).
+>
+> O que entrou: `sessao.js` sabe quais sessões estão vivas, qual vai para a tela (`naTela`) e qual é
+> a seguinte (`seguinte`), com 5 testes novos; a ilha guarda o último status **de cada sessão** (antes
+> era um só, e uma sessão apagava a outra). Na pílula, um "3" pequeno; na ilha aberta, "3 sessões ›"
+> ao lado dos passos, que some durante um pedido. **Conferido com sessões simuladas e cliques de
+> verdade na tela:** a que mudou por último aparece; três cliques dão a volta (rdo → korus → esta
+> conversa); o cartão do fim da korus fica na frente da rdo trabalhando e abre a ilha sozinho; o OK
+> passa para a outra; o `SessionEnd` tira da conta (3 → 2). **Testes em JS: 86.**
+>
+> **Achado no caminho, do teste e não do app:** um cursor que **pula** para fora da ilha (o
+> `SetCursorPos` do meu script) não gera a saída do mouse no WebView, e a ilha fica aberta. Saindo
+> em passos, como a mão faz, ela recolhe e a escolha volta à automática.
+>
+> **Testado por você com duas sessões reais (07/10): funcionou.**
+>
+> **Revisão do Codex (só leitura), 07/10, da F2 e da ponte da D12: 8 achados, todos corrigidos.**
+> 1. *(média)* Uma chamada idêntica, depois de um pedido já respondido (a ferramenta ainda rodando),
+>    herdava o id dele, e o resultado da primeira soltava o pedido da segunda. Agora cada ferramenta
+>    guarda que já ganhou o seu pedido (`comPedido`).
+> 2. *(média)* A entrada reescrita (por outro hook) ou só com as chaves em outra ordem deixava o
+>    pedido sem id até o prazo. A assinatura agora ordena as chaves, e, se nada casar, vale a única
+>    ferramenta de mesmo nome em curso sem pedido; com mais de uma, fica sem id (como antes).
+> 3. *(média)* Negar pela ilha com uma ferramenta irmã já em curso deixava o passo ✓ no fim. O ✗ agora
+>    vale sempre; só o status mostrado respeita a ordem de chegada. Conferido na tela.
+> 4. *(média)* O OK apertado num cartão podia dispensar o de outra sessão que tomasse o lugar antes de
+>    soltar. Agora vale o cartão do momento do aperto, como nos botões do pedido.
+> 5. *(média)* Passada 1 hora, um cartão do fim sem OK perdia a tela e a ilha recolhia. Agora um fim
+>    pendente mantém a sessão viva até o OK (a 1 hora só vale depois dele).
+> 6. *(baixa)* A assinatura (tamanho + FNV-1a de 32 bits) colidia: o Codex achou duas entradas de
+>    `echo` com o mesmo resumo. Agora a comparação é do JSON inteiro (só na memória, só até a
+>    ferramenta terminar).
+> 7. *(baixa)* A lista de ferramentas em curso guardava sessões vazias para sempre. Agora as vazias
+>    saem, e são no máximo 32 sessões.
+> 8. *(baixa)* A conta de sessões não mudava sozinha quando uma passava de 1 hora. A ilha agora se
+>    redesenha na hora certa e ao abrir.
+>
+> **Junto, o `AskUserQuestion`:** ao responder uma pergunta minha nesta conversa, a ilha a mostrou
+> como pedido, você clicou em Permitir, e nada aconteceu. O transcript mostrou que o Claude Code
+> ignorou o `allow` (nenhuma decisão de hook registrada) e esperou a escolha no terminal. Agora a
+> pergunta volta na hora sem decisão, e a ilha mostra "Pergunta no terminal: …", sem botões (8 ms,
+> conferido na tela). Responder pela ilha é a spec 004. **Testes em JS: 95**, com os novos da ponte
+> falhando contra o código anterior (controle).
+
 - Duas sessões reais ao mesmo tempo: a ilha mostra a que mudou por último, com "2 sessões", e um
   clique troca de sessão.
 - Um `SessionEnd` tira a sessão da conta.
@@ -210,7 +261,8 @@ enquanto está recolhida (D10).
 | V5 | O que o `PostToolUse` traz de Edit e Write? | **Respondida em 07/10 (2.1.292), numa sessão real pelo plano com um hook que gravava o corpo:** `tool_use_id`, `duration_ms` e um `tool_response` com `structuredPatch` (trechos com `lines` começando por `+`, `-` ou espaço), `originalFile` (o arquivo inteiro de antes) e `userModified`. Edit: também `oldString`, `newString`, `replaceAll`; um `replace_all` que trocou 2 linhas veio com as 2. Write: `type` `"create"` (patch vazio, `originalFile: null`) ou `"update"` (patch real: `−1 +2` numa troca de linha mais uma linha nova). O MultiEdit não foi testado (o teste não pediu um); o adaptador lê o mesmo `structuredPatch` |
 | V2b | O `StopFailure` traz `error_type: "rate_limit"` quando o limite acaba? | Na primeira vez que acontecer. Até lá, o teste é com `curl` |
 | V4 | O `cursorPosition()` do Tauri 2 devolve a posição fora da janela no Windows, e qual permissão (`core:window:…`) ele pede? | D10, antes da patadinha |
-| V3 | O `PreToolUse` de subagentes (`Task`/`Agent`) chega com o mesmo `session_id`? | Na E3. Define se os passos de um subagente somam na sessão |
+| V3 | O `PreToolUse` de subagentes (`Task`/`Agent`) chega com o mesmo `session_id`? | Na E3. Define se os passos de um subagente somam na sessão. **Respondida em 07/10: chega com o mesmo**; os passos do Codex como subagente apareceram no cartão desta conversa |
+| V6 | Fechar a janela do terminal manda o `SessionEnd`? | **Respondida por você em 07/10: manda.** A contagem cai na hora. A 1 hora sem eventos fica só como rede para um encerramento que não avise |
 
 ---
 

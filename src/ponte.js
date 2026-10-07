@@ -12,33 +12,48 @@ const Ponte = (() => {
   const abertos = [];
   let aoMudar = () => {};
 
-  // As ferramentas que começaram e ainda não terminaram, por sessão: { passoId, assinatura }. É
-  // daqui que o pedido (que vem sem id) descobre de qual ferramenta é.
+  // As ferramentas que começaram e ainda não terminaram, por sessão:
+  // { passoId, ferramenta, assinatura, comPedido }. É daqui que o pedido (que vem sem id) descobre
+  // de qual ferramenta é. `comPedido`: essa ferramenta já ganhou o pedido dela (aberto ou já
+  // respondido), e não pode ganhar outro.
   const emCurso = new Map();
-  const MAX_EM_CURSO = 64;
+  const MAX_EM_CURSO = 64;      // ferramentas por sessão
+  const MAX_SESSOES_EM_CURSO = 32; // sessões (uma que morreu sem Stop nem SessionEnd não fica para sempre)
   const chaveDaSessao = (fonte, evento) => `${fonte}\u0000${evento.sessao ?? ''}`;
 
   function anotarFerramenta(fonte, evento) {
     const chave = chaveDaSessao(fonte, evento);
-    if (evento.tipo === 'ferramenta' && evento.passoId != null && evento.assinatura) {
+    if (evento.tipo === 'ferramenta' && evento.passoId != null && evento.assinatura != null) {
       const lista = emCurso.get(chave) ?? [];
-      lista.push({ passoId: evento.passoId, assinatura: evento.assinatura });
+      lista.push({ passoId: evento.passoId, ferramenta: evento.ferramenta, assinatura: evento.assinatura, comPedido: false });
       if (lista.length > MAX_EM_CURSO) lista.shift();
+      // a sessão que mexeu por último vai para o fim; passou do teto, sai a mais antiga
+      emCurso.delete(chave);
       emCurso.set(chave, lista);
+      if (emCurso.size > MAX_SESSOES_EM_CURSO) emCurso.delete(emCurso.keys().next().value);
     } else if ((evento.tipo === 'concluiu' || evento.tipo === 'erro') && evento.passoId != null) {
       const lista = emCurso.get(chave);
       const i = lista?.findIndex(f => f.passoId === evento.passoId) ?? -1;
       if (i >= 0) lista.splice(i, 1);
+      if (lista && !lista.length) emCurso.delete(chave);
     } else if (sessaoMudou(evento)) {
       emCurso.delete(chave);
     }
   }
 
-  // o pedido de uma ferramenta: a mais antiga em curso com a mesma assinatura (duas chamadas
-  // iguais em paralelo são indistinguíveis, e tanto faz qual fica com qual)
+  // O pedido de uma ferramenta: a mais antiga em curso, ainda sem pedido, com a mesma assinatura
+  // (o nome e a entrada, comparados por inteiro). Duas chamadas idênticas em paralelo são
+  // indistinguíveis, e tanto faz qual fica com qual. Se nenhuma casar (outro hook PreToolUse pode
+  // ter reescrito a entrada), vale a única em curso dessa ferramenta ainda sem pedido; havendo mais
+  // de uma, fica sem id, e o pedido sai só com a sessão mudando ou o prazo.
   function idDoPedido(fonte, evento) {
-    const lista = emCurso.get(chaveDaSessao(fonte, evento));
-    return lista?.find(f => f.assinatura === evento.assinatura && !abertos.some(p => p.evento.passoId === f.passoId))?.passoId;
+    const livres = (emCurso.get(chaveDaSessao(fonte, evento)) ?? []).filter(f => !f.comPedido);
+    const iguais = livres.filter(f => f.assinatura === evento.assinatura);
+    const mesmaFerramenta = livres.filter(f => f.ferramenta === evento.ferramenta);
+    const achada = iguais[0] ?? (mesmaFerramenta.length === 1 ? mesmaFerramenta[0] : null);
+    if (!achada) return undefined;
+    achada.comPedido = true;
+    return achada.passoId;
   }
 
   // O que encerra a vez de um pedido sem a ilha decidir: um prompt novo, o fim ou a saída da sessão
@@ -89,9 +104,12 @@ const Ponte = (() => {
       aoMudar({ evento, abertos, saiu });
     } else if (aviso.aviso === 'pedido') {
       const evento = traduzir(aviso.fonte, aviso.corpo);
-      // fonte desconhecida ou pedido que não sabemos mostrar: devolve logo, e ele cai no terminal
+      // fonte desconhecida ou pedido que não sabemos mostrar: devolve logo, e ele cai no terminal.
+      // Uma pergunta do Claude (AskUserQuestion) vem como pedido, mas Permitir não a responde: ela
+      // segue no terminal, e a ilha só avisa (responder pela ilha é a spec 004).
       if (!evento || evento.tipo !== 'permissao') {
         invoke('responder_pedido', { id: aviso.id, corpo: null }).catch(() => {});
+        if (evento?.tipo === 'pergunta') aoMudar({ evento, abertos });
         return;
       }
       evento.pedidoId = aviso.id;
@@ -114,6 +132,9 @@ const Ponte = (() => {
 
   return {
     abertos,
+
+    /** Quantas sessões têm ferramentas em curso guardadas (para os testes do teto). */
+    get sessoesEmCurso() { return emCurso.size; },
 
     /** Começa a ouvir e liga a ponte. Devolve a porta; o erro vem como { codigo, porta, detalhe }. */
     async ligar(quandoMudar) {

@@ -174,6 +174,89 @@ test('no máximo 20 sessões: sai a que mudou há mais tempo', () => {
   assert.equal(S.obter({ ...base, sessao: 's1' }), null);
 });
 
+// F2 — várias sessões
+const de = sessao => ({ ...base, sessao });
+
+test('F2: a ilha mostra a sessão que mudou por último', () => {
+  const S = criarSessoes();
+  S.receber({ ...ferramenta('a', 'A'), sessao: 's1' });
+  S.receber({ ...ferramenta('b', 'B'), sessao: 's2' });
+  assert.deepEqual(S.vivas().map(k => k.split('\u0000')[1]), ['s2', 's1']);
+  assert.equal(S.naTela(), S.obter(de('s2')).chave);
+  S.receber({ ...ferramenta('c', 'C'), sessao: 's1' });
+  assert.equal(S.naTela(), S.obter(de('s1')).chave);
+});
+
+test('F2: o cartão do fim esperando o OK ganha da sessão que andou depois', () => {
+  const S = criarSessoes();
+  S.receber({ ...ev('fim', { mensagem: 'Pronto.' }), sessao: 's1' });
+  S.receber({ ...ferramenta('b', 'B'), sessao: 's2' });
+  assert.equal(S.naTela(), S.obter(de('s1')).chave);
+  // o OK: a s1 fica quieta, e a s2 aparece
+  S.dispensar(de('s1'));
+  assert.equal(S.naTela(), S.obter(de('s2')).chave);
+});
+
+test('F2: depois do OK, sem outra sessão, a ilha fica quieta; o próximo evento a acorda', () => {
+  const S = criarSessoes();
+  S.receber(ev('fim'));
+  S.dispensar(base);
+  assert.equal(S.naTela(), null);
+  assert.equal(S.vivas().length, 1, 'quieta, mas ainda conta como sessão aberta');
+  S.receber(ev('pensando'));
+  assert.equal(S.naTela(), S.obter(base).chave);
+});
+
+test('F2: a escolhida por clique vale enquanto está viva; "seguinte" dá a volta', () => {
+  const S = criarSessoes();
+  for (const s of ['s1', 's2', 's3']) S.receber({ ...ferramenta(s, s), sessao: s });
+  const [k3, k2, k1] = S.vivas();
+  assert.equal(S.seguinte(k3), k2);
+  assert.equal(S.seguinte(k1), k3, 'dá a volta');
+  assert.equal(S.naTela(k1), k1, 'a escolhida ganha da que mudou por último');
+  S.receber({ ...ev('saida'), sessao: 's1' });
+  assert.equal(S.naTela(k1), k3, 'a escolhida que saiu não vale mais');
+  assert.equal(S.seguinte('nenhuma'), k3);
+});
+
+test('F2: sem evento por 1 hora, a sessão sai da conta; um evento a traz de volta', () => {
+  let t = 0;
+  const S = criarSessoes({ agora: () => t });
+  S.receber({ ...ferramenta('a', 'A'), sessao: 's1' });
+  t = 30 * 60 * 1000;
+  S.receber({ ...ferramenta('b', 'B'), sessao: 's2' });
+  t = 61 * 60 * 1000;
+  assert.equal(S.vivas().length, 1, 'a s1 passou de 1 hora');
+  assert.equal(S.naTela(), S.obter(de('s2')).chave);
+  S.receber({ ...ferramenta('c', 'C'), sessao: 's1' });
+  assert.equal(S.vivas().length, 2);
+  assert.equal(S.seguinte(null), S.vivas()[0]);
+});
+
+test('F2: um cartão do fim pendente segura a tela e a conta, passe o tempo que passar (Codex, 07/10)', () => {
+  let t = 0;
+  const S = criarSessoes({ agora: () => t });
+  S.receber({ ...ev('fim', { mensagem: 'Pronto.' }), sessao: 's1' });
+  t = 3 * 60 * 60 * 1000; // 3 horas depois, outra sessão anda
+  S.receber({ ...ferramenta('b', 'B'), sessao: 's2' });
+  assert.equal(S.naTela(), S.obter(de('s1')).chave);
+  assert.equal(S.vivas().length, 2);
+  S.dispensar(de('s1'));
+  assert.equal(S.vivas().length, 1, 'depois do OK, a 1 hora volta a valer');
+});
+
+test('F2: proximaExpiracao diz quando a conta muda sozinha', () => {
+  let t = 0;
+  const S = criarSessoes({ agora: () => t });
+  assert.equal(S.proximaExpiracao(), null);
+  S.receber({ ...ferramenta('a', 'A'), sessao: 's1' });
+  t = 10 * 60 * 1000;
+  S.receber({ ...ferramenta('b', 'B'), sessao: 's2' });
+  assert.equal(S.proximaExpiracao(), 50 * 60 * 1000, 'a s1 vence primeiro');
+  S.receber({ ...ev('fim'), sessao: 's1' });
+  assert.equal(S.proximaExpiracao(), 60 * 60 * 1000, 'com o fim pendente, a s1 não vence');
+});
+
 test('cada passo guarda a hora (para a linha do tempo)', () => {
   const S = criarSessoes({ agora: () => 1234 });
   assert.equal(S.receber(ferramenta('a', 'x')).passos[0].hora, 1234);

@@ -5,6 +5,9 @@
 
 const MAX_PASSOS = 10;   // os que ficam guardados (a linha do tempo mostra 10); a contagem segue
 const MAX_SESSOES = 20;  // uma sessão que morreu sem SessionEnd não pode ficar para sempre
+// F2: sem evento nenhum por 1 hora, a sessão sai da conta de "2 sessões" (o terminal fechado talvez
+// não mande o SessionEnd). Ela volta no próximo evento.
+const VIVA_POR = 60 * 60 * 1000;
 
 /** A chave de uma sessão: a fonte e o id que ela deu. */
 export const chaveDe = evento => `${evento.fonte}\u0000${evento.sessao ?? ''}`;
@@ -15,7 +18,8 @@ const chaveDoArquivo = caminho => String(caminho).replace(/\\/g, '/').toLowerCas
 /**
  * As sessões abertas. `receber(evento)` atualiza a sessão do evento e a devolve (ou null, se o
  * evento a encerrou). Cada sessão:
- *   { chave, fonte, sessao, projeto, total, passos: [passo], arquivos: Map, fim }
+ *   { chave, fonte, sessao, projeto, total, passos: [passo], arquivos: Map, fim, ultimo, quieta }
+ *   (`ultimo`: a hora do último evento; `quieta`: o OK foi dado e nada aconteceu desde então)
  *   passo: { id, resumo, estado: 'atual' | 'ok' | 'erro' | 'negado', conta: { mais, menos } | null, hora }
  *   fim:   { mensagem: texto sem Markdown | null, falhou: bool } | null
  */
@@ -35,8 +39,20 @@ export function criarSessoes({ agora = () => Date.now() } = {}) {
       sessoes.set(chave, s);
     }
     if (evento.projeto) s.projeto = evento.projeto;
+    s.ultimo = agora();
+    s.quieta = false;
     return s;
   }
+
+  // As sessões vivas, da que mudou por último para a mais antiga. Um cartão do fim esperando o OK
+  // mantém a sessão viva, passe o tempo que passar (D4b): quem volta depois de horas ainda o encontra.
+  const vivas = () => [...sessoes.values()].reverse().filter(s => s.fim || agora() - s.ultimo < VIVA_POR);
+
+  /** Quando a próxima sessão viva deixa de contar (ms a partir de agora), ou null. */
+  const proximaExpiracao = () => {
+    const prazos = vivas().filter(s => !s.fim).map(s => s.ultimo + VIVA_POR - agora());
+    return prazos.length ? Math.max(0, Math.min(...prazos)) : null;
+  };
 
   // O evento é de uma ferramenta deste prompt? Com id, só se o id nasceu depois do último prompt
   // (um resultado atrasado do prompt anterior não mexe no novo); sem id, vale (fonte sem ids).
@@ -116,10 +132,34 @@ export function criarSessoes({ agora = () => Date.now() } = {}) {
       if (p?.estado === 'atual') p.estado = 'negado';
     },
 
-    /** O OK do cartão do fim. */
+    /** O OK do cartão do fim: a sessão fica quieta até o próximo evento dela. */
     dispensar(evento) {
       const s = sessoes.get(chaveDe(evento));
-      if (s) s.fim = null;
+      if (s) { s.fim = null; s.quieta = true; }
+    },
+
+    /** As chaves das sessões vivas (F2), da que mudou por último para a mais antiga. */
+    vivas: () => vivas().map(s => s.chave),
+
+    /** Em quantos ms a conta de sessões muda sozinha (uma sessão passa de 1 hora), ou null. */
+    proximaExpiracao,
+
+    /**
+     * Qual sessão a ilha mostra (D6, F2): a escolhida por clique, se ainda está viva; senão, a que
+     * tem um cartão do fim esperando o OK (D4b: o resultado de quem estava longe não some porque
+     * outra sessão andou); senão, a que mudou por último e não está quieta. Nenhuma: null.
+     */
+    naTela(escolhida = null) {
+      const lista = vivas();
+      if (escolhida && lista.some(s => s.chave === escolhida)) return escolhida;
+      return (lista.find(s => s.fim) ?? lista.find(s => !s.quieta))?.chave ?? null;
+    },
+
+    /** A sessão seguinte à `atual` na lista das vivas, dando a volta (o clique em "2 sessões"). */
+    seguinte(atual) {
+      const lista = vivas().map(s => s.chave);
+      if (!lista.length) return null;
+      return lista[(lista.indexOf(atual) + 1) % lista.length];
     },
 
     obter: evento => sessoes.get(chaveDe(evento)) ?? null,

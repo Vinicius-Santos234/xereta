@@ -29,6 +29,7 @@ const TEXTOS = {
   // o cartão da sessão e o do fim (002, F1)
   cartao: {
     passos: n => (n === 1 ? '1 passo' : `${n} passos`),
+    sessoes: n => `${n} sessões ›`,
     arquivos: ({ arquivos, mais, menos }) => `${arquivos === 1 ? '1 arquivo' : `${arquivos} arquivos`} (+${mais} −${menos})`,
     terminou: projeto => `${projeto} terminou`,
     parou: projeto => `${projeto} parou com erro`,
@@ -103,6 +104,7 @@ const TEXTOS = {
     Task: () => 'Chamando um ajudante',
     Agent: () => 'Chamando um ajudante',
     Skill: e => (e.skill ? `Usando a skill ${e.skill}` : 'Usando uma skill'),
+    AskUserQuestion: () => 'Fazendo uma pergunta',
     outra: nome => `Usando ${nome}`,
   },
   eventos: {
@@ -110,6 +112,7 @@ const TEXTOS = {
     pensando: 'Pensando…',
     falhou: nome => `${nome} falhou`,
     noTerminal: resumo => `No terminal: ${resumo}`,
+    pergunta: texto => (texto ? `Pergunta no terminal: ${texto}` : 'Pergunta no terminal'),
     respondido: resumo => `Respondido no terminal: ${resumo}`,
     encerrado: resumo => `Encerrado no terminal: ${resumo}`,
     negado: alvo => `Negado: ${alvo}`,

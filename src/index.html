@@ -11,13 +11,18 @@
     <div class="recolhida">
       <canvas id="gato-pilula"></canvas>
       <span id="texto-pilula"></span>
+      <span id="sessoes-pilula" class="selo-sessoes" hidden></span>
     </div>
     <div class="aberta">
       <canvas id="gato-ilha"></canvas>
       <div class="info">
         <div class="linha1">
           <span class="cabeca"><b id="titulo"></b><span id="subtitulo"></span></span>
-          <span class="contagem" id="contagem"></span>
+          <span class="direita">
+            <span class="contagem" id="contagem"></span>
+            <!-- F2: com mais de uma sessão, um clique mostra a seguinte -->
+            <button type="button" id="bt-sessoes" class="sessoes" hidden></button>
+          </span>
         </div>
         <div class="linha2" id="fala"></div>
         <div class="linha3" id="dica"></div>

@@ -81,9 +81,25 @@ escrever(ociosa);
 const ESTADO_DO_TIPO = {
   inicio: 'oi', pensando: 'pensando', ferramenta: 'trabalhando', concluiu: 'trabalhando', permissao: 'esperando',
   erro: 'erro', fim: 'feliz', saida: 'parado', noTerminal: 'esperando', respondido: 'trabalhando',
-  negado: 'negou', encerrado: 'parado',
+  negado: 'negou', encerrado: 'parado', pergunta: 'esperando',
 };
-let ultimoStatus = null; // o último evento que não é pedido, para voltar a ele quando os pedidos acabam
+// F2: o último status de cada sessão (o último evento que não é pedido, ou o que ficou no lugar de
+// um pedido), para mostrar qualquer uma quando os pedidos acabam. A chave é a mesma do sessao.js.
+const chaveDe = evento => `${evento.fonte}\u0000${evento.sessao ?? ''}`;
+const statusDe = new Map();
+let ponteLigada = false;
+let escolhida = null; // a sessão trocada por clique em "2 sessões"; vale até a ilha recolher
+
+// a sessão na tela e o status dela; sem o sessao.js, o status mais recente (como na F1)
+function statusNaTela() {
+  if (sessoes) return statusDe.get(sessoes.naTela(escolhida)) ?? null;
+  let recente = null;
+  for (const s of statusDe.values()) if (!recente || s.chegou > recente.chegou) recente = s;
+  return recente;
+}
+
+// quantas sessões a ilha conta (as vivas que têm o que mostrar)
+const sessoesNaConta = () => (sessoes ? sessoes.vivas().filter(k => statusDe.has(k)) : [...statusDe.keys()]);
 
 // Como um pedido sai da tela vira o status que fica no lugar dele, até o próximo evento da sessão.
 const DEPOIS_DO_PEDIDO = {
@@ -121,7 +137,7 @@ let sessoes = null;
 const MARCA = { atual: '›', ok: '✓', erro: '✗', negado: '✗' };
 const COR_DA_MARCA = { ok: 'ok', erro: 'erro', negado: 'erro' };
 // statuses que contam o que aconteceu com o último passo (o do pedido): tomam o lugar dele
-const SOBRE_O_PEDIDO = new Set(['noTerminal', 'respondido', 'encerrado', 'negado']);
+const SOBRE_O_PEDIDO = new Set(['noTerminal', 'respondido', 'encerrado', 'negado', 'pergunta']);
 
 // As duas linhas do cartão: o passo anterior e o atual. Um status que não é passo ("Pensando…",
 // "No terminal: …") entra como a linha atual.
@@ -183,16 +199,46 @@ function mostrarFim(evento, sessao) {
   $('mensagem').textContent = mensagem ?? (falhou ? TEXTOS.eventos.parou : TEXTOS.cartao.semMensagem);
 }
 
-// o OK: o cartão do fim sai, e a ilha volta a ficar quieta
+// O OK: o cartão do fim sai, e a ilha mostra outra sessão ou volta a ficar quieta. Como nos botões
+// do pedido, o clique vale para o cartão que estava na tela quando o botão foi APERTADO: se o fim de
+// outra sessão tomar o lugar antes de soltar, o OK não o dispensa sem ele ter sido visto.
+let gestoOk = null;
 $('bt-ok').textContent = TEXTOS.cartao.ok;
+$('bt-ok').addEventListener('pointerdown', () => { gestoOk = statusNaTela(); });
 $('bt-ok').addEventListener('click', ev => {
   ev.stopPropagation(); // o clique não chega ao gato
-  if (!ultimoStatus) return;
-  sessoes?.dispensar(ultimoStatus);
-  ultimoStatus = null;
-  mostrarOciosa();
+  const status = statusNaTela();
+  const apertado = gestoOk;
+  gestoOk = null;
+  if (!status || status !== apertado) return;
+  if (sessoes) sessoes.dispensar(status);
+  else statusDe.delete(chaveDe(status));
+  escolhida = null;
+  mostrar();
   if (!mouseDentro) agendarRecolher();
 });
+
+// "2 sessões": um clique mostra a seguinte (D6). A escolha vale até a ilha recolher.
+$('bt-sessoes').addEventListener('click', ev => {
+  ev.stopPropagation();
+  if (!sessoes) return;
+  escolhida = sessoes.seguinte(sessoes.naTela(escolhida));
+  mostrar();
+});
+
+// O "2" da pílula e o "2 sessões" da ilha aberta. A conta muda sozinha quando uma sessão passa de
+// 1 hora sem eventos: a ilha se redesenha nessa hora, sem esperar um evento novo.
+let timerConta = null;
+function mostrarConta() {
+  clearTimeout(timerConta);
+  const ms = sessoes?.proximaExpiracao();
+  if (ms != null) timerConta = setTimeout(mostrar, ms + 1000);
+  const n = sessoesNaConta().length;
+  $('sessoes-pilula').hidden = n < 2;
+  $('sessoes-pilula').textContent = n;
+  $('bt-sessoes').hidden = n < 2;
+  $('bt-sessoes').textContent = TEXTOS.cartao.sessoes(n);
+}
 
 // o pedido na tela: "korus · quer rodar · Claude Code", o alvo e os botões
 function mostrarPedido(evento, mais) {
@@ -208,34 +254,56 @@ function mostrarPedido(evento, mais) {
   $('alvo').title = alvo;
 }
 
-// O pedido aberto mais antigo manda na ilha; sem pedidos, vale o último status.
-function aoMudarPonte({ evento, abertos, saiu }) {
-  if (evento) sessoes?.receber(evento);
-  if (evento && evento.tipo !== 'permissao') ultimoStatus = evento;
-  // O status que fica no lugar do pedido que saiu. Se a sessão já andou depois do pedido (até
-  // terminou), o aviso chegou atrasado e não vale mais.
-  const sessaoAndou = ultimoStatus?.sessao === saiu?.evento.sessao && ultimoStatus?.chegou > saiu?.evento.chegou;
-  if (saiu && !sessaoAndou) {
-    ultimoStatus = { ...saiu.evento, ...DEPOIS_DO_PEDIDO[saiu.como](saiu.evento) };
-    if (saiu.como === 'negado') sessoes?.negado(saiu.evento);
-  }
-
+// O pedido aberto mais antigo manda na ilha, seja de que sessão for; sem pedidos, vale o status da
+// sessão na tela (F2).
+function mostrar() {
+  const abertos = Ponte.abertos;
   const primeiro = abertos[0]?.id ?? null;
   if (primeiro !== naTela.id) {
     naTela.id = primeiro;
     naTela.desde = performance.now();
     gesto = null; // um botão apertado no pedido anterior não vale para este
   }
+  mostrarConta();
   el.classList.toggle('pedindo', abertos.length > 0);
-  if (abertos.length) {
-    mostrarPedido(abertos[0].evento, abertos.length - 1);
-    abrirSozinha();
-    return;
-  }
-  if (ultimoStatus) mostrarEvento(ultimoStatus);
+  if (abertos.length) return mostrarPedido(abertos[0].evento, abertos.length - 1);
+  const status = statusNaTela();
+  if (status) mostrarEvento(status);
   else mostrarOciosa(); // título, subtítulo e alvo do pedido que acabou não podem ficar para trás
-  // D4b: o cartão do fim abre a ilha e a deixa aberta até o OK (ou o próximo evento da sessão)
-  if (cartaoDoFim()) abrirSozinha();
+}
+
+function aoMudarPonte({ evento, saiu }) {
+  if (evento) {
+    sessoes?.receber(evento);
+    const chave = chaveDe(evento);
+    if (evento.tipo === 'saida') {
+      // F2: o SessionEnd tira a sessão da conta e da tela
+      statusDe.delete(chave);
+      if (escolhida === chave) escolhida = null;
+    } else if (evento.tipo !== 'permissao') {
+      statusDe.set(chave, evento);
+    }
+  }
+  // O status que fica no lugar do pedido que saiu. Se a sessão dele já andou depois do pedido (até
+  // terminou), o aviso chegou atrasado e não vale mais.
+  if (saiu) {
+    // o ✗ no passo negado vale sempre; só o status mostrado é que pode ter chegado atrasado
+    if (saiu.como === 'negado') sessoes?.negado(saiu.evento);
+    const chave = chaveDe(saiu.evento);
+    const sessaoAndou = statusDe.get(chave)?.chegou > saiu.evento.chegou;
+    if (!sessaoAndou && (statusDe.has(chave) || !sessoes || sessoes.obter(saiu.evento))) {
+      statusDe.set(chave, { ...saiu.evento, ...DEPOIS_DO_PEDIDO[saiu.como](saiu.evento) });
+    }
+  }
+  // até 2× as sessões guardadas no sessao.js: o resto é de sessões que já saíram de lá
+  if (statusDe.size > 40) {
+    const maisAntigo = [...statusDe.entries()].sort((a, b) => a[1].chegou - b[1].chegou)[0][0];
+    statusDe.delete(maisAntigo);
+  }
+
+  mostrar();
+  // um pedido ou o cartão do fim (D4b) abrem a ilha e a deixam aberta até a resposta ou o OK
+  if (Ponte.abertos.length || cartaoDoFim()) abrirSozinha();
   else if (!mouseDentro) agendarRecolher(); // a ilha só ficou aberta por causa do pedido ou do fim
 }
 
@@ -305,7 +373,11 @@ const cartaoDoFim = () => el.classList.contains('terminou');
 function recolher() {
   // com um pedido na tela a ilha não recolhe: os botões sumiriam (P1, emenda da E4); com o cartão
   // do fim, também não: ele fica até o OK (D4b)
-  if (!expandida || Ponte.abertos.length || cartaoDoFim()) return;
+  if (!expandida || Ponte.abertos.length) return;
+  // a sessão escolhida por clique só vale enquanto a ilha está aberta (F2); voltar à automática
+  // pode trazer um cartão do fim de outra sessão, e aí a ilha fica aberta
+  if (escolhida) { escolhida = null; mostrar(); }
+  if (cartaoDoFim()) return;
   expandida = false;
   gatoPilula.ativo = true;
   el.classList.remove('expandida');
@@ -328,7 +400,11 @@ function abrirSozinha() {
   if (!pausada) expandir();
 }
 
-el.addEventListener('mouseenter', () => { mouseDentro = true; expandir(); });
+el.addEventListener('mouseenter', () => {
+  mouseDentro = true;
+  if (!expandida && ponteLigada) mostrar(); // abre com a conta e a sessão de agora (sem apagar um erro da ponte)
+  expandir();
+});
 el.addEventListener('mouseleave', () => { mouseDentro = false; agendarRecolher(); });
 
 // ---------- bandeja ----------
@@ -437,6 +513,7 @@ janela.onScaleChanged(async () => {
   }
   try {
     const porta = await Ponte.ligar(aoMudarPonte);
+    ponteLigada = true;
     ociosa = { ...ociosa, subtitulo: TEXTOS.ilha.ouvindo(porta) };
     $('subtitulo').textContent = ociosa.subtitulo;
   } catch (err) {

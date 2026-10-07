@@ -61,6 +61,7 @@ Claude Code ── hook http ──▶  ponte em Rust (127.0.0.1:47321, com toke
 | **E3** ✅ | Instalador dos hooks (`npm run hooks`) e a primeira sessão real | App fechado: **3–17 ms** por hook; **38 testes** em JS; revisada pelo Codex; **89,8 MB** de média parada |
 | **E4** ✅ | Permitir, Negar e No terminal pela ilha; o terminal vem para a frente | Ilha solta o pedido respondido no terminal; **28 testes** em Rust, **43** em JS; **84,7 MB** parada; revisada pelo Codex |
 | **002 F1** ✅ | O cartão da sessão: passos, `+N −M` de cada edição e a mensagem final com OK | `+N −M` pelo patch real do `PostToolUse` (8º hook); pedidos em paralelo sem se perder; **81 testes** em JS; revisada pelo Codex |
+| **002 F2** ✅ | Várias sessões: a que mudou por último na tela, "N sessões ›" para trocar, o cartão do fim na frente | Fechar o terminal tira da conta na hora (V6); pergunta do Claude vira aviso; **95 testes** em JS; revisada pelo Codex |
 
 Um pedido de permissão abre a ilha sozinho, com o que o Claude quer fazer e três botões:
 **Negar**, **Permitir** e **No terminal** (que traz a janela do terminal para a frente). O terminal
@@ -188,7 +189,7 @@ ideias/                   documentos vivos (diferenciais, mascote, concorrente)
 | Spec | O que é | Estado |
 |---|---|---|
 | [001 — MVP](specs/001-mvp.md) | A ilha, o gato, o status ao vivo e a permissão pela ilha | **Concluída** (05/10) |
-| [002 — A ilha conta a sessão](specs/002-sessao-na-ilha.md) | Passos, `+N −M`, a mensagem final, a linha do tempo, várias sessões, selo e a personalidade do gato (cochilo, caneca, ronronar, patadinha) | **Aprovada** (07/10); F1 (o cartão da sessão) concluída em 07/10 |
+| [002 — A ilha conta a sessão](specs/002-sessao-na-ilha.md) | Passos, `+N −M`, a mensagem final, a linha do tempo, várias sessões, selo e a personalidade do gato (cochilo, caneca, ronronar, patadinha) | **Aprovada** (07/10); F1 (o cartão da sessão) concluída em 07/10; F2 (várias sessões) concluída em 07/10 |
 | [003 — Decidir com confiança](specs/003-decidir-com-confianca.md) | **O diff no próprio pedido**, o nível de risco do comando e "sempre permitir" com a regra à vista | Rascunho |
 | [004 — Responder ao Claude](specs/004-responder-ao-claude.md) | As perguntas de múltipla escolha respondidas pela ilha | Rascunho |
 | [005 — Configurações e conforto](specs/005-configuracoes-e-conforto.md) | Janela de configurações, tela cheia, modo foco, modo apresentação, som, atalhos e uso do plano | Rascunho |

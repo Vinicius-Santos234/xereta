@@ -166,10 +166,26 @@ test('a assinatura liga o pedido ao PreToolUse da mesma chamada, e só a ela', (
   assert.equal(pedido.assinatura, antes.assinatura);
   assert.notEqual(hook('PermissionRequest', { tool_name: 'Bash', tool_input: { command: 'git push' } }).assinatura, antes.assinatura);
   assert.notEqual(hook('PermissionRequest', { tool_name: 'PowerShell', tool_input: entrada }).assinatura, antes.assinatura);
-  // o conteúdo não fica no evento: só tamanho e resumo
-  const grande = hook('PreToolUse', { tool_name: 'Write', tool_input: { file_path: 'a', content: 'x'.repeat(100_000) } });
-  assert.ok(grande.assinatura.length < 24);
+  // a ordem das chaves não conta (Codex, 07/10)
+  const invertida = hook('PermissionRequest', { tool_name: 'Bash', tool_input: { description: 'x', command: 'git push origin main' } });
+  assert.equal(invertida.assinatura, antes.assinatura);
+  // as duas entradas que colidiam no hash de 32 bits (Codex, 07/10) agora são diferentes
+  const a = hook('PreToolUse', { tool_name: 'Bash', tool_input: { command: 'echo 409ca48055951e46' } });
+  const b = hook('PreToolUse', { tool_name: 'Bash', tool_input: { command: 'echo 1005047aa1c99bdf' } });
+  assert.notEqual(a.assinatura, b.assinatura);
   assert.equal(hook('PostToolUse', { tool_name: 'Bash' }).assinatura, undefined);
+});
+
+test('a pergunta do Claude (AskUserQuestion) vira aviso, e não pedido', () => {
+  const r = hook('PermissionRequest', {
+    tool_name: 'AskUserQuestion',
+    tool_input: { questions: [{ question: 'Continua a conversa anterior?\nou começa uma nova', header: 'Codex', options: [] }] },
+  });
+  assert.equal(r.tipo, 'pergunta');
+  assert.equal(r.resumo, 'Pergunta no terminal: Continua a conversa anterior?');
+  assert.equal(r.pedido, undefined);
+  assert.equal(hook('PermissionRequest', { tool_name: 'AskUserQuestion' }).resumo, 'Pergunta no terminal');
+  assert.equal(hook('PreToolUse', { tool_name: 'AskUserQuestion', tool_input: {} }).resumo, 'Fazendo uma pergunta');
 });
 
 test('pedidos de leitura e busca dizem o arquivo ou a pasta', () => {
