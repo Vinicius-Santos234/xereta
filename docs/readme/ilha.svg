@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 132" width="640" height="132" role="img" aria-labelledby="titulo descricao">
+  <title id="titulo">Xereta</title>
+  <desc id="descricao">A ilha do Xereta no topo da tela: um gato frajola numa pílula escura que conta o que o Claude Code está fazendo. Rodando npm test, editando billing.ts com três linhas a mais e uma a menos, pedindo licença para um git push e, no fim, Prontinho.</desc>
+  <!--
+    A ilha passa por quatro momentos num ciclo de 12 s. Regras (vault: svg-animado-no-readme-do-github):
+    o tempo de cada parte está dentro do próprio @keyframes, em porcentagem do ciclo comum (delay só
+    vale na primeira volta), e o quadro 0 já é o desenho completo, porque em captura, pré-visualização
+    ou com "reduzir movimento" é ele que aparece.
+  -->
+  <style>
+    .pilula { fill: #08080a; }
+    .borda { fill: none; stroke: rgba(255, 255, 255, .10); stroke-width: 1.5; }
+    .ambar { fill: none; stroke: #ffba3c; stroke-width: 2; opacity: 0; animation: ambar 12s infinite; }
+    .texto { font: 500 22px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #ecebf0; }
+    .fraco { fill: #8d8b9b; font-weight: 400; }
+    .mono { font: 500 20px ui-monospace, "Cascadia Mono", Consolas, monospace; fill: #f4f3f8; }
+    .mais { fill: #6fd08c; }
+    .menos { fill: #ff7a7a; }
+    .ok { fill: #6fd08c; }
+    .e1 { animation: e1 12s infinite; }
+    .e2 { opacity: 0; animation: e2 12s infinite; }
+    .e3 { opacity: 0; animation: e3 12s infinite; }
+    .e4 { opacity: 0; animation: e4 12s infinite; }
+    .olho { transform-box: fill-box; transform-origin: center; animation: piscar 12s infinite; }
+    .cabeca { animation: pulo 12s infinite; }
+
+    @keyframes e1 { 0%, 22% { opacity: 1 } 25%, 97% { opacity: 0 } 100% { opacity: 1 } }
+    @keyframes e2 { 0%, 22% { opacity: 0 } 25%, 47% { opacity: 1 } 50%, 100% { opacity: 0 } }
+    @keyframes e3 { 0%, 47% { opacity: 0 } 50%, 72% { opacity: 1 } 75%, 100% { opacity: 0 } }
+    @keyframes e4 { 0%, 72% { opacity: 0 } 75%, 97% { opacity: 1 } 100% { opacity: 0 } }
+    @keyframes ambar { 0%, 47% { opacity: 0 } 50%, 72% { opacity: .85 } 75%, 100% { opacity: 0 } }
+    /* duas piscadas por ciclo, rápidas */
+    @keyframes piscar { 0%, 15%, 17.5%, 60%, 62.5%, 100% { transform: scaleY(1) } 16%, 61% { transform: scaleY(.1) } }
+    /* o pulinho do "Prontinho!" */
+    @keyframes pulo { 0%, 75%, 81%, 100% { transform: translateY(0) } 77.5% { transform: translateY(-5px) } }
+
+    @media (prefers-reduced-motion: reduce) {
+      .e1, .e2, .e3, .e4, .ambar, .olho, .cabeca { animation: none; }
+    }
+  </style>
+
+  <defs>
+    <clipPath id="rosto"><circle cx="112" cy="68" r="27"/></clipPath>
+  </defs>
+
+  <!-- a pílula, pendurada no topo da tela -->
+  <rect class="pilula" x="40" y="22" width="560" height="92" rx="46"/>
+  <rect class="borda" x="40.75" y="22.75" width="558.5" height="90.5" rx="45.25"/>
+  <rect class="ambar" x="41" y="23" width="558" height="90" rx="45"/>
+
+  <!-- o gato: frajola, com as orelhas soltas da cabeça, como no esboço -->
+  <g class="cabeca">
+    <polygon points="86,44 79,23 101,36" fill="#141416" stroke="#3a3a40" stroke-width="1"/>
+    <polygon points="125,36 146,23 139,44" fill="#f4f1ec"/>
+    <polygon points="129,36 142,28 138,40" fill="#f2a7bd"/>
+    <circle cx="112" cy="68" r="27" fill="#f4f1ec"/>
+    <ellipse cx="97" cy="60" rx="21" ry="23" fill="#141416" clip-path="url(#rosto)"/>
+    <ellipse class="olho" cx="101" cy="66" rx="3.6" ry="4.8" fill="#f4f1ec"/>
+    <ellipse class="olho" cx="122" cy="66" rx="3.6" ry="4.8" fill="#141416"/>
+    <polygon points="107.5,75 116.5,75 112,80.5" fill="#f2a7bd"/>
+    <g stroke="#b9b6c4" stroke-width="1" stroke-linecap="round" fill="none">
+      <path d="M100 79 Q 86 77 74 80"/>
+      <path d="M100 82 Q 87 83 76 88"/>
+      <path d="M124 79 Q 138 77 150 80"/>
+      <path d="M124 82 Q 137 83 148 88"/>
+    </g>
+  </g>
+
+  <!-- 1. trabalhando -->
+  <g class="e1">
+    <text class="texto" x="172" y="62"><tspan class="fraco">korus · 3 passos</tspan></text>
+    <text class="texto" x="172" y="90">› Rodando npm test</text>
+  </g>
+  <!-- 2. editando, com o +N −M -->
+  <g class="e2">
+    <text class="texto" x="172" y="62"><tspan class="ok">✓</tspan><tspan class="fraco"> Rodando npm test</tspan></text>
+    <text class="texto" x="172" y="90">› Editando billing.ts <tspan class="mais">+3</tspan> <tspan class="menos">−1</tspan></text>
+  </g>
+  <!-- 3. pedindo licença -->
+  <g class="e3">
+    <text class="texto" x="172" y="62"><tspan class="fraco">korus · quer rodar</tspan></text>
+    <text class="mono" x="172" y="90">git push origin main</text>
+  </g>
+  <!-- 4. pronto -->
+  <g class="e4">
+    <text class="texto" x="172" y="62"><tspan class="fraco">korus terminou · 5 passos</tspan></text>
+    <text class="texto" x="172" y="90">Prontinho! <tspan class="fraco">48 testes passando.</tspan></text>
+  </g>
+</svg>

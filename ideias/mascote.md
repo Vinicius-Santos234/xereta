@@ -3,7 +3,7 @@
 Ideias para o personagem do Xereta. Nada aqui é decisão: elas viram decisão no protótipo da E1
 (`design/mascote.html`).
 
-## O esboço (02/10) — `mascote.png`
+## O esboço (02/10) — `design/esboco.png`
 Um **gato frajola**: cabeça redonda, uma mancha preta cobrindo o olho e a orelha esquerdos, a
 outra orelha só no contorno, focinho rosa em triângulo, bigodes, sem boca. **As orelhas
 flutuam**, soltas da cabeça.

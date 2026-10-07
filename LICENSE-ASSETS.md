@@ -11,7 +11,7 @@ Copyright (c) 2026 Vinicius Gonçalves Oliveira Santos. Todos os direitos reserv
   provisório; se mudar, esta reserva passa para o nome novo.
 - **O gato frajola, mascote do Xereta**, em qualquer forma: o desenho, as proporções, a mancha, as
   orelhas flutuantes, os bigodes que viram braços com luvinhas, as expressões, os gestos, o selo de
-  estado e as animações. Isso vale para o esboço (`mascote.png`), para o protótipo
+  estado e as animações. Isso vale para o esboço (`design/esboco.png`), para o protótipo
   (`design/mascote.html`) e para **o personagem desenhado pelo código** em `src/mascote/`.
 - **O ícone do aplicativo, os sons e as imagens e vídeos de divulgação**, quando existirem.
 
