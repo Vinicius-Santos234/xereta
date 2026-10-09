@@ -1,6 +1,6 @@
 # Spec 002 — A ilha conta a sessão
 
-**Status:** **aprovada em 07/10**, em andamento: **F1 e F2 concluídas em 07/10**; a seguir, a F3 (o gato, protótipo primeiro). Emenda de 07/10 na D3 (o `+N −M` vem do
+**Status:** **aprovada em 07/10**, em andamento: **F1 e F2 concluídas em 07/10, F3 (o gato) concluída em 09/10**; a seguir, a linha do tempo (D11), presa à ilha grande da 003. Emenda de 07/10 na D3 (o `+N −M` vem do
 `PostToolUse`).
 **Origem:** `ideias/coucou-instagram.md` (P3, P4, P5, P6, P7, P10 e P11) e `ideias/mascote.md`.
 **Depende de:** E3 da 001, que é quando os campos reais dos hooks são vistos pela primeira vez.
@@ -42,7 +42,7 @@ testes passando."* Não preciso abrir o terminal para saber o que aconteceu.
 | D12 | O pedido respondido no terminal | **Nova em 07/10, decisão sua.** Um pedido sai da ilha sem decisão dela só quando chega o **resultado da ferramenta dele** (`PostToolUse`/`PostToolUseFailure` com o mesmo `tool_use_id`) ou quando **a sessão muda** (prompt novo, `Stop`, `StopFailure`, `SessionEnd`). O `PermissionRequest` não traz id: a ponte o liga ao `PreToolUse` com o mesmo nome e a mesma entrada (uma assinatura de tamanho + FNV-1a). Por isso o `PostToolUse` passa a valer para **todas** as ferramentas (matcher `*`) | A regra da E4 ("qualquer evento novo da sessão solta o pedido") quebrava com chamadas em paralelo: o `PreToolUse` da ferramenta irmã soltava o pedido anterior, que ficava só no terminal. Visto por você ao atualizar o vault (três leituras: a ilha mostrou a terceira enquanto o terminal pedia a primeira) e confirmado no transcript |
 | D5 | Privacidade | A mensagem final e os nomes de arquivo **só vivem na memória** da página, como na D9 da 001 | A mensagem final pode citar segredo, igual ao `tool_input` |
 | D6 | Várias sessões | A ilha mostra **a sessão que mudou por último**, com "2 sessões" no canto; um clique troca | Você roda mais de uma sessão. Hoje a ilha mistura todas |
-| D7 | Selo de estado | Um **sinal na orelha clara do gato**, onde hoje fica o miolo rosa: `…` pensando, `⋯` trabalhando, `!` esperando, `?` pergunta, ✓ pronto, ✗ erro | Dá para ler o estado na pílula, onde os gestos não cabem. Fica na orelha, e não num círculo no canto da cabeça como no Mochi (D12 da 001) |
+| D7 | Selo de estado | Um **sinal na orelha clara do gato**, onde hoje fica o miolo rosa: `…` pensando, `⋯` trabalhando, `!` esperando, `?` pergunta, ✓ pronto, ✗ erro. **Emenda de 08/10, aprovada por você no protótipo:** mais a **lupa** (procurando), o **z** (cochilo) e a **bateria vazia** (cansado); o sinal fica numa placa da cor do estado; no radar e na hélice, a orelha do selo balança em vez de dar a volta | Dá para ler o estado na pílula, onde os gestos não cabem. Fica na orelha, e não num círculo no canto da cabeça como no Mochi (D12 da 001). A 100% de escala, quem separa os estados é a cor da placa (aprovado assim) |
 | D8 | Reação de entrada | Cada troca de estado ganha uma reação **curta, de menos de 1 s**, com as molas que já existem: pronto pula, erro sacode, esperando estica as orelhas | Segue o "Curto" de `ideias/mascote.md`. Com "reduzir movimento" ligado, não há reação |
 | D10 | Cursor perto da pílula | Ler a posição do cursor (`cursorPosition()` da API de janela do Tauri) a 15 qps, só com a ilha recolhida, só para a patadinha e o olhar | O recorte faz a janela não existir fora da ilha, e por isso ela não recebe `pointermove` de fora. Ler a posição não captura nada nem rouba clique |
 | D11 | Linha do tempo | Clicar no cartão da sessão abre a **linha do tempo**: os últimos 10 passos com a hora (`14:30 ✓ npm test · 14:31 ✎ auth.ts · 14:32 ✓ Prontinho!`), na ilha grande da 003 (D1). Só na memória, como a D5 | É o "o que ele fez enquanto eu estava longe". Duas linhas no cartão (D1/D2) não contam uma sessão inteira |
@@ -231,6 +231,94 @@ enquanto está recolhida (D10).
 - Um pedido de permissão sempre ganha a tela, seja qual for a sessão (a fila da 001 continua igual).
 
 ### F3 — O gato
+> **Concluída em 09/10:** teste na mão, revisão do Codex com as correções conferidas por você no app
+> (a saudação segura os 2 s com esta sessão mandando eventos) e o commit. Depois da F3, a linha do
+> tempo (D11), presa à ilha grande da 003.
+>
+> **09/10 — Teste na mão, primeira parte.** Cliques, patadinha, lupa e caneca conferidos por você.
+> A saudação passava despercebida: na pílula só se via a espiada e o pulo das orelhas, e o aceno
+> não cabe. **Decisão sua:** ao abrir o app, a ilha abre sozinha por 2 s e o gato dela saúda do
+> começo (espia de baixo e acena); depois recolhe, salvo mouse em cima, pedido ou cartão do fim.
+> Saudação nova e cochilo conferidos por você. **Decisão sua:** no cochilo, os 3 cliques continuam
+> sendo carinho, mas os 6 não deixam o gato tonto (teste novo, que falha sem a correção).
+>
+> **09/10 — Revisão do Codex, só de leitura: 4 achados, nenhum grave, todos corrigidos.** Nada nas
+> 11 regras, no `cursor.rs` nem na cache de gradientes.
+> 1. **O gato cochilava com um cartão do fim fora da tela** (outra sessão escolhida por clique, mouse
+>    em cima por 10 min) e dormia por cima dele quando ele voltava. O `cochilar()` olhava só a tela;
+>    agora pergunta ao `sessao.js` (`algumFim()`, teste com controle).
+> 2. **O mouse entrando enquanto o recorte crescia apagava a saudação:** o `expandir()` dele
+>    terminava depois e o `herdarMomento` trocava a saudação por nada. Agora quem chama durante uma
+>    expansão espera a mesma (e, se ela foi cancelada pelo mouse saindo, abre de novo depois).
+> 3. **Um evento no meio da saudação a cortava em 1 s:** o recolher comum agora respeita o prazo
+>    dela (`fimDaSaudacao`). Com esta sessão ligada à ilha, era o caso comum.
+> 4. **Cliques de 10 s antes contavam no carinho:** o relógio dos cliques era o `this.t`, que para
+>    no gato escondido. Agora é o tempo de verdade (`relogio`, de mentira nos testes; teste com
+>    controle). **110 testes em JS.** O 2 e o 3 só se conferem no app.
+>
+> **08/10 (noite) — Ligada aos eventos; a memória resolvida.** O que entrou:
+> - **Estados pelos eventos:** `estadoDoGato` no `sessao.js` (com testes). `Grep`/`Glob`/`WebSearch`/
+>   `WebFetch` → procurando (o adaptador marca `procura`); 10 passos ou mais desde o prompt →
+>   maratona; ferramenta que falhou → a reação pequena (`ops`, D9); a pergunta → pergunta;
+>   `StopFailure` com `error_type: "rate_limit"` → cansado, com "vitrine parou no limite de uso" e
+>   "Bati no limite de uso" (V2b segue aberta: o campo vem da documentação).
+> - **Cochilo:** 10 minutos sem evento, nunca com pedido ou cartão do fim esperando; o hover não
+>   acorda; o próximo evento acorda com o susto. **Saudação** uma vez ao abrir. **Cliques:** carinho
+>   e tonto, com os textos dos momentos na pílula e na fala; o gato escondido herda o momento ao
+>   aparecer (`herdarMomento`).
+> - **O cursor (V4) pelo Rust, e não pelo JS.** A primeira versão lia o `cursorPosition()` a 15 qps e
+>   custou **7,5 pontos de CPU** (13,1% → 5,6% ao desligar, mesma execução) e a serra de memória.
+>   Agora `cursor.rs` lê o cursor numa linha de fundo e só manda o evento `cursor` quando ele está a
+>   até 240 px lógicos da pílula; o `recortar` diz quando vigiar (`perto`). Cursor longe: 5,4%,
+>   igual a sem leitura; parado perto: +1,6 ponto. A permissão `cursor-position` não é mais usada.
+> - **Conferido no app** com sessão simulada e fotos pelo CDP: procurando, ops, maratona (caneca na
+>   pílula), cansado no cartão do fim, cochilo, susto, carinho, tonto e a patadinha com o cursor
+>   passando de verdade. **Testes: 106 em JS, 30 no Rust.**
+> - **Memória: a serra voltou e foi resolvida (08/10, noite).** Parada, a release da F3 fazia serra
+>   de ~85 a ~210 MB (médias de 110 a 149 MB), contra ~85 MB planos do commit anterior, medidos
+>   alternados. Quem crescia era o **renderizador**, ~0,6 MB/s, em memória **nativa** (o heap do JS
+>   ficava em 2 MB), e só quando o gato desenhava. Uma coleta pedida pela depuração
+>   (`HeapProfiler.collectGarbage`) o derrubava de 39,6 para 22,4 MB na hora: não é vazamento, é
+>   memória que só volta numa coleta completa, e o V8 a agenda pelo heap do JS, sem enxergar o
+>   nativo. A build anterior escapava por sorte do agendamento (compilar 35 KB de JS também
+>   "destravava" a F3). Duas mudanças:
+>   1. **Gradientes e caminhos guardados** (`guardar`/`gradiente` no `gato.js`): a pílula criava 18
+>      gradientes e 7 `Path2D` por quadro (375 por segundo; a ilha aberta, mais de 2.000). Agora os
+>      gradientes saem de uma cache (pontos em 1/4 de px, alfa em 1/50) e a cabeça, a mancha e os
+>      bigodes são traçados direto no contexto. Depois de esquentar, **zero** objetos novos em todos
+>      os estados (teste novo, que falha com a cache desligada: 5.400 gradientes e 1.500 caminhos em
+>      300 quadros). Sozinha, baixou a serra para 80–141 MB (média 111): não bastou.
+>   2. **Uma coleta completa a cada 20 s** (`--js-flags=--expose-gc` no `tauri.conf.json`, e
+>      `gc()` no laço da ilha; sem a flag, não faz nada). Com o heap de 2 MB, custa milissegundos.
+>   **Resultado, alternado com o commit anterior (5 min cada):** F3 **74,9 e 74,5 MB**, planas (73–78),
+>   contra 84,4 e 84,8 MB. CPU no ruído da máquina (6,6% contra 6,6% na mesma rodada).
+>
+> **08/10 — Protótipo aprovado por você:** *"ficou bom, pode aprovar"*. As cores na pílula a
+> 100% ficam assim, a orelha do selo balança, e os três sinais novos entram na D7 (emenda acima).
+>
+> **08/10 — Protótipo pronto** (`design/mascote.html`). O motor é o mesmo
+> da ilha (`src/mascote/gato.js`), então o que for aprovado já está pronto para ligar aos eventos.
+> - **Selo:** o miolo da orelha clara vira uma placa da cor do estado, com o sinal desenhado em
+>   traço e sempre em pé: `…` (os pontos acendem um por um), `⋯` (em onda), `!`, `?`, ✓, ✗, e três
+>   que a D7 não listava: **lupa** (procurando), **z** (cochilo) e **bateria vazia** (cansado). No
+>   radar e na hélice, a orelha do selo balança em vez de dar a volta (de costas, o selo some); quem
+>   gira é a escura. Na pílula, as orelhas ficam 40% maiores e a placa toma quase a orelha toda.
+> - **A 100% de escala** (a faixa do protótipo desenha pixel a pixel), quem separa os estados é
+>   **a cor da placa**; o sinal ajuda no `!`, `?`, ✓ e ✗ e quase some no `…`. Por isso a pergunta
+>   ficou magenta e o cansado cinza: em azul e lilás, se confundiam com procurando e pensando.
+> - **Estados novos:** procurando, pergunta, maratona (a caneca entre as luvinhas; na pílula, ao
+>   lado do gato), cochilo (a cabeça afunda nas luvinhas, "z" saindo da orelha) e cansado (pálpebra
+>   pesada, orelha escura caída, gota de suor).
+> - **Momentos**, por cima do estado e voltando sozinhos a ele: susto (0,45 s, em qualquer saída do
+>   cochilo), carinho (3 cliques em 2 s), tonto (6 cliques, 3 s), saudação (espia de baixo e acena).
+>   Um pedido corta o momento na hora; com pedido na tela, cliques não viram carinho nem tonto.
+> - **Patadinha:** `criarVigiaDePatada` (cursor a mais de 900 px/s, a até 60 px da pílula e fora dela,
+>   uma a cada 30 s); nunca com pedido, no cochilo ou com "reduzir movimento". Na pílula, só essa
+>   luvinha aparece, com um golpe curto, porque o canvas acaba logo depois da bochecha.
+> - **V4 respondida pelo código-fonte** (Tauri 2.12.1, tao 0.37.1): `cursorPosition()` chama
+>   `GetCursorPos`, que dá a posição na tela inteira em pixels físicos, com o cursor fora da janela.
+>   A permissão é `core:window:allow-cursor-position`. Conferir no app ao ligar a patadinha.
+
 - **Antes do código, o protótipo:** `design/mascote.html` ganha o selo na orelha, os 6 estados
   novos (procurando, cochilo, maratona, pergunta, tonto e cansado) e as reações (susto ao acordar,
   ronronar, patadinha), aprovados por você.
@@ -260,7 +348,7 @@ enquanto está recolhida (D10).
 | V2 | Nomes dos campos: `old_string`/`new_string`/`replace_all` (Edit), `edits[]` (MultiEdit) e `content` (Write)? | Na E3. **Respondida em 05/10:** Edit e Write como o Coucou. Com a emenda da D3, quem conta é o `tool_response` (V5) |
 | V5 | O que o `PostToolUse` traz de Edit e Write? | **Respondida em 07/10 (2.1.292), numa sessão real pelo plano com um hook que gravava o corpo:** `tool_use_id`, `duration_ms` e um `tool_response` com `structuredPatch` (trechos com `lines` começando por `+`, `-` ou espaço), `originalFile` (o arquivo inteiro de antes) e `userModified`. Edit: também `oldString`, `newString`, `replaceAll`; um `replace_all` que trocou 2 linhas veio com as 2. Write: `type` `"create"` (patch vazio, `originalFile: null`) ou `"update"` (patch real: `−1 +2` numa troca de linha mais uma linha nova). O MultiEdit não foi testado (o teste não pediu um); o adaptador lê o mesmo `structuredPatch` |
 | V2b | O `StopFailure` traz `error_type: "rate_limit"` quando o limite acaba? | Na primeira vez que acontecer. Até lá, o teste é com `curl` |
-| V4 | O `cursorPosition()` do Tauri 2 devolve a posição fora da janela no Windows, e qual permissão (`core:window:…`) ele pede? | D10, antes da patadinha |
+| V4 | O `cursorPosition()` do Tauri 2 devolve a posição fora da janela no Windows, e qual permissão (`core:window:…`) ele pede? | D10, antes da patadinha. **Respondida em 08/10 pelo código-fonte:** devolve (via `GetCursorPos`, em pixels físicos da tela); a permissão é `core:window:allow-cursor-position`. Falta ver no app |
 | V3 | O `PreToolUse` de subagentes (`Task`/`Agent`) chega com o mesmo `session_id`? | Na E3. Define se os passos de um subagente somam na sessão. **Respondida em 07/10: chega com o mesmo**; os passos do Codex como subagente apareceram no cartão desta conversa |
 | V6 | Fechar a janela do terminal manda o `SessionEnd`? | **Respondida por você em 07/10: manda.** A contagem cai na hora. A 1 hora sem eventos fica só como rede para um encerramento que não avise |
 

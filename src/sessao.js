@@ -21,7 +21,7 @@ const chaveDoArquivo = caminho => String(caminho).replace(/\\/g, '/').toLowerCas
  *   { chave, fonte, sessao, projeto, total, passos: [passo], arquivos: Map, fim, ultimo, quieta }
  *   (`ultimo`: a hora do último evento; `quieta`: o OK foi dado e nada aconteceu desde então)
  *   passo: { id, resumo, estado: 'atual' | 'ok' | 'erro' | 'negado', conta: { mais, menos } | null, hora }
- *   fim:   { mensagem: texto sem Markdown | null, falhou: bool } | null
+ *   fim:   { mensagem: texto sem Markdown | null, falhou: bool, limite?: bool } | null
  */
 export function criarSessoes({ agora = () => Date.now() } = {}) {
   const sessoes = new Map();
@@ -112,9 +112,9 @@ export function criarSessoes({ agora = () => Date.now() } = {}) {
             const p = doPrompt(s, evento) ? passoDo(s, evento) : null;
             if (p) p.estado = 'erro';
           } else {
-            // a sessão parou com erro (StopFailure)
+            // a sessão parou com erro (StopFailure); no limite de uso, o gato fica cansado
             concluirTodos(s);
-            s.fim = { mensagem: null, falhou: true };
+            s.fim = { mensagem: null, falhou: true, limite: evento.motivo === 'limite' };
           }
           break;
         case 'fim':
@@ -141,6 +141,9 @@ export function criarSessoes({ agora = () => Date.now() } = {}) {
     /** As chaves das sessões vivas (F2), da que mudou por último para a mais antiga. */
     vivas: () => vivas().map(s => s.chave),
 
+    /** Algum cartão do fim espera o OK, mesmo de uma sessão fora da tela (o cochilo espera por ele). */
+    algumFim: () => vivas().some(s => s.fim),
+
     /** Em quantos ms a conta de sessões muda sozinha (uma sessão passa de 1 hora), ou null. */
     proximaExpiracao,
 
@@ -165,6 +168,30 @@ export function criarSessoes({ agora = () => Date.now() } = {}) {
     obter: evento => sessoes.get(chaveDe(evento)) ?? null,
     get quantas() { return sessoes.size; },
   };
+}
+
+// Tipo do formato comum (§4 da 001) → cara do gato
+const ESTADO_DO_TIPO = {
+  inicio: 'oi', pensando: 'pensando', ferramenta: 'trabalhando', concluiu: 'trabalhando', permissao: 'esperando',
+  erro: 'erro', fim: 'feliz', saida: 'parado', noTerminal: 'esperando', respondido: 'trabalhando',
+  negado: 'negou', encerrado: 'parado', pergunta: 'pergunta',
+};
+// §4 da 002: a partir de tantos passos sem Stop, a caneca de café
+export const PASSOS_DA_MARATONA = 10;
+
+/**
+ * O estado do gato para o status que a ilha mostra (F3). O fim manda: feliz, erro ou, no limite de
+ * uso, cansado. Uma ferramenta que falhou é a reação pequena (D9: um grep sem resultado não pode
+ * fazer o olho saltar). Dez passos ou mais desde o prompt viram maratona, procurando ou não, para a
+ * caneca não piscar a cada busca. Pedido e pergunta não chegam à maratona.
+ */
+export function estadoDoGato(evento, sessao = null) {
+  if (sessao?.fim) return !sessao.fim.falhou ? 'feliz' : sessao.fim.limite ? 'cansado' : 'erro';
+  let estado = ESTADO_DO_TIPO[evento?.tipo] ?? 'parado';
+  if (evento?.tipo === 'erro' && evento.ferramenta) estado = 'ops';
+  if (estado === 'trabalhando' && evento.procura) estado = 'procurando';
+  if ((estado === 'trabalhando' || estado === 'procurando') && (sessao?.total ?? 0) >= PASSOS_DA_MARATONA) estado = 'maratona';
+  return estado;
 }
 
 /** Quantos arquivos a sessão editou desde o último prompt, e o +N −M somado. */

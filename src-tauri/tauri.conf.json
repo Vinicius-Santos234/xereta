@@ -25,7 +25,7 @@
         "focusable": false,
         "shadow": false,
         "visible": false,
-        "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --disable-gpu"
+        "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --disable-gpu --js-flags=--expose-gc"
       }
     ],
     "security": {

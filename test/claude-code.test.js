@@ -202,3 +202,22 @@ test('a Skill diz qual é', () => {
   assert.equal(hook('PreToolUse', { tool_name: 'Skill', tool_input: { skill: 'codex:rescue', args: 'x' } }).resumo, 'Usando a skill codex:rescue');
   assert.equal(hook('PreToolUse', { tool_name: 'Skill', tool_input: {} }).resumo, 'Usando uma skill');
 });
+
+test('as ferramentas de busca vêm marcadas como procura (o gato fica procurando)', () => {
+  for (const nome of ['Grep', 'Glob', 'WebSearch', 'WebFetch']) {
+    assert.equal(hook('PreToolUse', { tool_name: nome, tool_input: {} }).procura, true, nome);
+    assert.equal(hook('PostToolUse', { tool_name: nome, tool_input: {} }).procura, true, nome);
+  }
+  for (const nome of ['Bash', 'Read', 'Edit']) assert.equal(hook('PreToolUse', { tool_name: nome, tool_input: {} }).procura, undefined, nome);
+});
+
+test('StopFailure de rate_limit vira o limite de uso; outro motivo é o erro de sempre', () => {
+  const limite = hook('StopFailure', { error_type: 'rate_limit' });
+  assert.equal(limite.tipo, 'erro');
+  assert.equal(limite.motivo, 'limite');
+  assert.equal(limite.resumo, 'Bati no limite de uso');
+  const outro = hook('StopFailure', { error_type: 'server_error' });
+  assert.equal(outro.motivo, undefined);
+  assert.equal(outro.resumo, 'Parou com erro');
+  assert.equal(hook('StopFailure').motivo, undefined);
+});

@@ -12,6 +12,7 @@
     --texto: #ecebf0;
     --suave: #8d8c99;
     --ilha: #08080a;
+    --novo: #7fd6c4;
   }
   body.claro {
     --fundo: #efece6;
@@ -19,6 +20,7 @@
     --borda: #dedad2;
     --texto: #1d1c22;
     --suave: #77746d;
+    --novo: #16806c;
   }
   * { box-sizing: border-box; }
   body {
@@ -32,7 +34,7 @@
   header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; }
   h1 { margin: 0; font-size: 26px; letter-spacing: -.01em; }
   h2 { margin: 48px 0 6px; font-size: 18px; }
-  p.sub { margin: 4px 0 0; color: var(--suave); }
+  p.sub { margin: 4px 0 0; color: var(--suave); max-width: 760px; }
   .controles { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   button, label.chk {
     font: inherit; font-size: 13px; color: var(--texto);
@@ -45,13 +47,18 @@
 
   .grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin-top: 28px; }
   .cartao {
+    position: relative;
     background: var(--cartao); border: 1px solid var(--borda); border-radius: 20px;
     padding: 6px 6px 16px; text-align: center; transition: background .3s;
   }
   .cartao canvas { width: 100%; max-width: 240px; aspect-ratio: 1; display: block; margin: 0 auto; cursor: pointer; }
   .cartao h3 { margin: 0; font-size: 16px; }
-  .cartao .gatilho { font: 12px ui-monospace, Consolas, monospace; color: var(--suave); }
-  .cartao .fala { margin-top: 6px; font-style: italic; }
+  .cartao .gatilho { font: 12px ui-monospace, Consolas, monospace; color: var(--suave); padding: 0 8px; }
+  .cartao .fala { margin-top: 6px; font-style: italic; padding: 0 8px; }
+  .cartao .selo-novo {
+    position: absolute; top: 10px; left: 12px; font-size: 11px; font-weight: 600;
+    color: var(--novo); border: 1px solid currentColor; border-radius: 999px; padding: 0 8px;
+  }
 
   .palco {
     margin-top: 16px; padding: 28px 16px 36px; border-radius: 20px;
@@ -59,19 +66,22 @@
     display: flex; flex-direction: column; align-items: center; gap: 22px;
   }
   .seletor { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .seletor button { background: #22232a; border-color: #34353f; color: #ecebf0; }
+  .seletor button.ativo { background: #f4f2ee; color: #111; border-color: #f4f2ee; }
+  .seletor .rotulo { color: #9aa1b3; font-size: 12px; align-self: center; margin-right: 4px; }
   .pilula {
     position: relative; width: 140px; height: 34px; border-radius: 17px;
     background: var(--ilha); box-shadow: 0 0 0 1px rgba(255,255,255,.07), 0 6px 18px rgba(0,0,0,.45);
     overflow: hidden; display: flex; align-items: center;
   }
-  .pilula canvas { width: 44px; height: 34px; flex: none; margin-right: 2px; }
+  .pilula canvas { width: 44px; height: 34px; flex: none; margin-right: 2px; cursor: pointer; }
   .pilula span { color: #e9e7ef; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 12px; }
   .expandida {
     position: relative; width: min(420px, 100%); min-height: 110px; border-radius: 28px;
     background: var(--ilha); box-shadow: 0 0 0 1px rgba(255,255,255,.07), 0 10px 30px rgba(0,0,0,.5);
     display: flex; align-items: center; overflow: hidden; color: #ecebf0;
   }
-  .expandida canvas { width: 100px; height: 110px; flex: none; }
+  .expandida canvas { width: 100px; height: 110px; flex: none; cursor: pointer; }
   .expandida .info { padding: 12px 18px 12px 0; min-width: 0; }
   .expandida .linha1 { font-size: 13px; color: #a9a7b4; }
   .expandida .linha1 b { color: #fff; }
@@ -83,7 +93,23 @@
   .expandida .botoes { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
   .expandida .botoes button { background: #22232a; border-color: #2f3039; color: #ecebf0; padding: 4px 12px; }
   .expandida .botoes button.sim { background: #f4f2ee; color: #111; border-color: #f4f2ee; }
-  .legenda { color: #9aa1b3; font-size: 12px; text-align: center; }
+  .legenda { color: #9aa1b3; font-size: 12px; text-align: center; max-width: 520px; }
+  .palco label.chk { background: #22232a; border-color: #34353f; color: #ecebf0; }
+
+  /* o selo a 100%: cada canvas tem um pixel do canvas por pixel da tela */
+  .faixa {
+    margin-top: 16px; padding: 20px 16px; border-radius: 20px;
+    background: linear-gradient(180deg, #2b3242 0%, #1b1f29 100%);
+    display: flex; flex-wrap: wrap; gap: 14px; justify-content: center;
+  }
+  .faixa .item { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .faixa .mini {
+    background: var(--ilha); border-radius: 999px; padding: 0 10px 0 0;
+    box-shadow: 0 0 0 1px rgba(255,255,255,.07); display: flex; align-items: center; overflow: hidden;
+  }
+  .faixa canvas { display: block; image-rendering: pixelated; }
+  .faixa .nome { color: #9aa1b3; font-size: 11px; visibility: hidden; }
+  .faixa.legendas .nome { visibility: visible; }
 
   .notas { margin-top: 12px; color: var(--suave); }
   .notas li { margin: 4px 0; }
@@ -95,7 +121,8 @@
   <header>
     <div>
       <h1>Xereta · o gato</h1>
-      <p class="sub">Protótipo da E1: os 6 estados do frajola. Clique num gato para cutucar; ele também acompanha o seu mouse.</p>
+      <p class="sub">Protótipo da F3 da 002: o selo na orelha, os estados novos e as reações. Clique num gato
+        para cutucar (três cliques em 2 s: carinho; seis: tonto). Ele também acompanha o seu mouse.</p>
     </div>
     <div class="controles">
       <label class="chk"><input type="checkbox" id="reduzir"> Reduzir movimento</label>
@@ -103,31 +130,57 @@
     </div>
   </header>
 
+  <h2>Os estados</h2>
+  <p class="sub">O selo fica na orelha clara, onde antes ficava o miolo rosa. No radar e na hélice, essa orelha
+    balança em vez de dar a volta (de costas, o selo some); quem gira é a orelha escura.</p>
   <section class="grade" id="grade"></section>
 
-  <h2>Caras extras, com gestos</h2>
-  <p class="sub">Para usar depois: os três bigodes de um lado se juntam num braço e ganham uma luvinha na ponta.</p>
-  <section class="grade" id="grade-extra"></section>
+  <h2>Momentos</h2>
+  <p class="sub">Reações curtas por cima do estado, que voltam sozinhas a ele. Aqui elas se repetem a cada
+    poucos segundos, para dar tempo de olhar.</p>
+  <section class="grade" id="grade-momentos"></section>
+
+  <h2>O selo a 100%</h2>
+  <p class="sub">A pílula pixel a pixel, como numa tela em 100% de escala, seja qual for a escala desta tela.
+    O critério da F3: dá para dizer o estado sem a legenda.</p>
+  <div class="controles" style="margin-top: 12px">
+    <button id="legendas">Mostrar legendas</button>
+    <button id="ampliar">Ampliar 3×</button>
+  </div>
+  <div class="faixa" id="faixa"></div>
 
   <h2>Na ilha</h2>
-  <p class="sub">A pílula recolhida (140×34) e a ilha expandida (420×110), no tamanho real, sobre um fundo de área de trabalho.</p>
+  <p class="sub">A pílula recolhida (140×34) e a ilha expandida (420×110), no tamanho real. Passe o mouse
+    <b>rápido</b> perto da pílula, sem entrar nela, para a patadinha.</p>
   <div class="palco">
     <div class="seletor" id="seletor"></div>
-    <div class="pilula"><canvas id="gato-pilula"></canvas><span id="texto-pilula"></span></div>
+    <div class="seletor" id="seletor-momentos"></div>
+    <div class="pilula" id="pilula"><canvas id="gato-pilula"></canvas><span id="texto-pilula"></span></div>
     <div class="expandida">
       <canvas id="gato-ilha"></canvas>
       <div class="info" id="info-ilha"></div>
     </div>
-    <div class="legenda">Na pílula só cabem orelhas e olhos: o gato espia por cima da borda de baixo.</div>
+    <label class="chk"><input type="checkbox" id="sem-espera"> Patadinha sem os 30 s de espera (só no protótipo)</label>
+    <div class="legenda" id="legenda-palco">Na pílula só cabem orelhas, olhos e o selo; a luvinha só aparece na patadinha.</div>
   </div>
+
+  <h2>Caras extras, com gestos</h2>
+  <p class="sub">Da E1, para usar depois: os três bigodes de um lado se juntam num braço e ganham uma luvinha na ponta.</p>
+  <section class="grade" id="grade-extra"></section>
 
   <h2>Como foi feito</h2>
   <ul class="notas">
-    <li><b>Canvas 2D com molas.</b> Cada parte solta (orelhas, bigodes, olhos, o corpo inteiro) tem a própria mola, e por isso passa do ponto e volta, como desenho animado.</li>
-    <li><b>Volume em camadas:</b> base em diagonal, a cor do estado subindo de baixo, sombra nas bordas, brilho fixo em cima à esquerda e um halo da cor do estado atrás.</li>
-    <li><b>Cabeça que gira:</b> olhos, nariz, bigodes e a mancha andam sobre a esfera quando ele olha para os lados, mas o brilho fica parado. É isso que faz parecer 3D.</li>
-    <li><b>A mancha no escuro:</b> grafite com brilho, em vez de preto chapado, contorno escuro suave e o halo do estado separando a mancha do fundo.</li>
-    <li><b>Gestos:</b> nas caras extras, os três bigodes de um lado se juntam e viram o braço, e uma luvinha aparece com mola na ponta. A luva é desenhada duas vezes (contorno, depois recheio), por isso fica com uma borda só, como desenho antigo de borracha.</li>
+    <li><b>O selo</b> é desenhado com traços, não com fonte: um <b>…</b> que acende ponto por ponto (pensando),
+      um <b>⋯</b> em onda (trabalhando), <b>!</b>, <b>?</b>, <b>✓</b>, <b>✗</b>, uma lupa (procurando), um
+      <b>z</b> (cochilo) e uma bateria vazia (cansado). A placa tem a cor do estado; o sinal fica sempre em pé,
+      mesmo com a orelha inclinada. Na pílula, as orelhas são 30% maiores.</li>
+    <li><b>Momentos</b> (susto, carinho, tonto, saudação) trocam só olhos, orelhas e mãos; a cor e o selo
+      continuam os do estado. Um pedido que chega corta o momento na hora.</li>
+    <li><b>Cochilo:</b> a cabeça afunda sobre as luvinhas, a respiração fica lenta e funda, e os "z" saem
+      da orelha do selo. Qualquer estado novo o acorda num susto de 0,45 s.</li>
+    <li><b>Patadinha:</b> o cursor precisa passar a mais de 900 px/s, a até 60 px da pílula e fora dela. No
+      máximo uma a cada 30 s, nenhuma com um pedido na tela, no cochilo ou com "reduzir movimento".</li>
+    <li><b>Reduzir movimento:</b> sem reações nem patadinha; o carinho e o tonto ainda trocam a cara, parados.</li>
   </ul>
 </main>
 
@@ -144,6 +197,11 @@ const GATILHOS = {
   esperando: 'PermissionRequest',
   feliz: 'Stop',
   erro: 'StopFailure',
+  procurando: 'Grep · Glob · WebSearch · WebFetch',
+  pergunta: 'AskUserQuestion (004)',
+  maratona: '10 passos sem Stop',
+  cochilo: '10 min sem evento',
+  cansado: 'StopFailure de rate_limit',
   oi: 'SessionStart',
   feito: 'Stop',
   testes: 'testes passaram',
@@ -153,67 +211,201 @@ const GATILHOS = {
   eita: 'comando perigoso',
   socorro: 'StopFailure grave',
 };
+const NOVOS = new Set(['procurando', 'pergunta', 'maratona', 'cochilo', 'cansado']);
 
 const ILHA = {
-  parado:      { l1: 'korus', l2: 'Nada rolando por aqui' },
-  pensando:    { l1: 'korus', l2: 'Pensando no seu pedido…' },
-  trabalhando: { l1: 'korus', l2: 'Rodando <code>npm test</code>' },
-  esperando:   { l1: 'korus · Claude Code quer rodar um comando', l2: '<code>git push origin main</code>', botoes: true },
-  feliz:       { l1: 'korus', l2: 'Terminei! 3 arquivos alterados' },
-  erro:        { l1: 'korus', l2: 'Deu ruim: o comando falhou' },
-  oi:          { l1: 'korus', l2: 'Nova sessão começou' },
-  feito:       { l1: 'korus', l2: 'Terminei! 3 arquivos alterados' },
-  testes:      { l1: 'korus', l2: '<code>npm test</code>: 42 passaram' },
-  aqui:        { l1: 'korus · Claude Code quer rodar um comando', l2: '<code>git push origin main</code>', botoes: true },
-  negou:       { l1: 'korus', l2: 'Pedido negado: <code>git push</code>' },
-  ops:         { l1: 'korus', l2: 'O <code>grep</code> não achou nada' },
-  eita:        { l1: 'korus · comando perigoso', l2: '<code>git push --force</code>', botoes: true },
-  socorro:     { l1: 'korus', l2: 'A sessão falhou: limite de uso' },
+  parado:      { l1: 'vitrine', l2: 'Nada rolando por aqui' },
+  pensando:    { l1: 'vitrine', l2: 'Pensando no seu pedido…' },
+  trabalhando: { l1: 'vitrine · 4 passos', l2: 'Rodando <code>npm test</code>' },
+  esperando:   { l1: 'vitrine · Claude Code quer rodar', l2: '<code>git push origin main</code>', botoes: true },
+  feliz:       { l1: 'vitrine terminou · 9 passos', l2: 'Corrigi o cálculo do frete, 48 testes passando.' },
+  erro:        { l1: 'vitrine parou com erro', l2: 'Deu ruim: a sessão falhou' },
+  procurando:  { l1: 'vitrine · 5 passos', l2: 'Procurando <code>calcularFrete</code>' },
+  pergunta:    { l1: 'vitrine · uma pergunta', l2: 'Qual transportadora usar no teste?' },
+  maratona:    { l1: 'vitrine · 14 passos', l2: 'Editando frete.ts   +3 −1' },
+  cochilo:     { l1: 'vitrine', l2: 'Nada há 10 minutos. Zzz…' },
+  cansado:     { l1: 'vitrine parou', l2: 'Bati no limite de uso.' },
+  oi:          { l1: 'vitrine', l2: 'Sessão nova' },
+  feito:       { l1: 'vitrine terminou', l2: 'Tá feito! 3 arquivos alterados' },
+  testes:      { l1: 'vitrine', l2: '<code>npm test</code>: 48 passaram' },
+  aqui:        { l1: 'vitrine · Claude Code quer rodar', l2: '<code>git push origin main</code>', botoes: true },
+  negou:       { l1: 'vitrine', l2: 'Pedido negado: <code>git push</code>' },
+  ops:         { l1: 'vitrine', l2: 'O <code>grep</code> não achou nada' },
+  eita:        { l1: 'vitrine · comando perigoso', l2: '<code>git push --force</code>', botoes: true },
+  socorro:     { l1: 'vitrine', l2: 'A sessão falhou feio' },
 };
 
-// ---------- página ----------
 const gatos = [];
+const relogios = []; // funções chamadas a cada quadro, com o tempo, para os momentos que se repetem
+
+// ---------- os estados e as caras extras ----------
+function cartao(destino, titulo, gatilho, fala, novo) {
+  const el = document.createElement('div');
+  el.className = 'cartao';
+  el.innerHTML = '<canvas></canvas><h3></h3><div class="gatilho"></div><div class="fala"></div>';
+  el.querySelector('h3').textContent = titulo;
+  el.querySelector('.gatilho').textContent = gatilho;
+  el.querySelector('.fala').textContent = fala ? `“${fala}”` : '';
+  if (novo) {
+    const s = document.createElement('span');
+    s.className = 'selo-novo';
+    s.textContent = 'novo';
+    el.appendChild(s);
+  }
+  document.getElementById(destino).appendChild(el);
+  return el.querySelector('canvas');
+}
+
 for (const [chave, e] of Object.entries(ESTADOS)) {
-  const grade = document.getElementById(e.extra ? 'grade-extra' : 'grade');
-  const cartao = document.createElement('div');
-  cartao.className = 'cartao';
-  cartao.innerHTML = `<canvas></canvas><h3>${TEXTOS.estados[chave].rotulo}</h3><div class="gatilho">${GATILHOS[chave]}</div><div class="fala">“${TEXTOS.estados[chave].fala}”</div>`;
-  grade.appendChild(cartao);
-  const cv = cartao.querySelector('canvas');
+  const t = TEXTOS.estados[chave];
+  const cv = cartao(e.extra ? 'grade-extra' : 'grade', t.rotulo, GATILHOS[chave], t.fala, NOVOS.has(chave));
   const g = new Gato(cv, { estado: chave });
   cv.addEventListener('click', () => g.cutucar());
   gatos.push(g);
 }
 
-const gatoPilula = new Gato(document.getElementById('gato-pilula'), { pequeno: true, raio: 12, cx: 22, cy: 19 });
+// ---------- os momentos, repetindo ----------
+const DEMOS = [
+  { titulo: TEXTOS.momentos.susto.rotulo, gatilho: 'cochilo → UserPromptSubmit', fala: '', estado: 'cochilo', ciclo: 4.2,
+    passo: (g, f) => { if (f === 0) g.mudarEstado('cochilo'); if (f === 1) g.mudarEstado('pensando'); }, marcas: [0, 2.4] },
+  { titulo: TEXTOS.momentos.carinho.rotulo, gatilho: '3 cliques em 2 s', fala: TEXTOS.momentos.carinho.fala, estado: 'parado', ciclo: 3,
+    passo: g => g.reagir('carinho'), marcas: [0] },
+  { titulo: TEXTOS.momentos.tonto.rotulo, gatilho: '6 cliques em 2 s', fala: TEXTOS.momentos.tonto.fala, estado: 'trabalhando', ciclo: 4.5,
+    passo: g => g.reagir('tonto'), marcas: [0] },
+  { titulo: TEXTOS.momentos.saudacao.rotulo, gatilho: 'ao abrir o app', fala: TEXTOS.momentos.saudacao.fala, estado: 'parado', ciclo: 3.5,
+    passo: g => g.reagir('saudacao'), marcas: [0] },
+  { titulo: 'Patadinha', gatilho: 'cursor rápido perto da pílula', fala: '', estado: 'parado', ciclo: 1.6, lado: 1,
+    passo: (g, f, d) => { g.patada(d.lado); d.lado = -d.lado; }, marcas: [0] },
+];
+for (const d of DEMOS) {
+  const cv = cartao('grade-momentos', d.titulo, d.gatilho, d.fala, true);
+  const g = new Gato(cv, { estado: d.estado });
+  cv.addEventListener('click', () => g.cutucar());
+  gatos.push(g);
+  let antes = -1;
+  relogios.push(t => {
+    const x = (t + .6) % d.ciclo;
+    const f = d.marcas.findLastIndex(m => x >= m);
+    if (f !== antes) { antes = f; d.passo(g, f, d); }
+  });
+}
+
+// ---------- o selo a 100% ----------
+const faixa = document.getElementById('faixa');
+const miniaturas = [];
+for (const [chave, e] of Object.entries(ESTADOS)) {
+  if (e.extra) continue;
+  const item = document.createElement('div');
+  item.className = 'item';
+  item.innerHTML = '<div class="mini"><canvas></canvas></div><div class="nome"></div>';
+  item.querySelector('.nome').textContent = TEXTOS.estados[chave].rotulo;
+  faixa.appendChild(item);
+  const cv = item.querySelector('canvas');
+  cv.width = 44; cv.height = 34;
+  const g = new Gato(cv, { estado: chave, pequeno: true, raio: 12, cx: 22, cy: 19, largura: 44, altura: 34, dpr: 1 });
+  gatos.push(g);
+  miniaturas.push(cv);
+}
+let ampliado = 1;
+function tamanhoReal() {
+  // a pílula inteira (140×34), para a curva da borda cortar só o que corta no app
+  for (const cv of miniaturas) {
+    cv.style.width = `${44 * ampliado / devicePixelRatio}px`;
+    cv.style.height = `${34 * ampliado / devicePixelRatio}px`;
+    cv.parentElement.style.width = `${140 * ampliado / devicePixelRatio}px`;
+  }
+}
+tamanhoReal();
+document.getElementById('legendas').addEventListener('click', ev => {
+  const on = faixa.classList.toggle('legendas');
+  ev.currentTarget.textContent = on ? 'Esconder legendas' : 'Mostrar legendas';
+});
+document.getElementById('ampliar').addEventListener('click', ev => {
+  ampliado = ampliado === 1 ? 3 : 1;
+  ev.currentTarget.textContent = ampliado === 1 ? 'Ampliar 3×' : 'Tamanho real';
+  tamanhoReal();
+});
+
+// ---------- na ilha ----------
+let estadoPalco = 'esperando';
+const textoPilula = document.getElementById('texto-pilula');
+function textosDoPalco(momento) {
+  const m = momento && TEXTOS.momentos[momento];
+  textoPilula.textContent = m?.pilula ?? TEXTOS.estados[estadoPalco].pilula;
+  const i = ILHA[estadoPalco];
+  const linha2 = m?.fala ? m.fala.replace(/&/g, '&amp;').replace(/</g, '&lt;') : i.l2;
+  const [nome, resto] = i.l1.split(/ · (.*)/);
+  document.getElementById('info-ilha').innerHTML =
+    `<div class="linha1"><b>${nome}</b>${resto ? ' · ' + resto : ''}</div>` +
+    `<div class="linha2">${linha2}</div>` +
+    (i.botoes && !m ? '<div class="botoes"><button>Negar</button><button>No terminal</button><button class="sim">Permitir</button></div>' : '');
+}
+const gatoPilula = new Gato(document.getElementById('gato-pilula'), { pequeno: true, raio: 12, cx: 22, cy: 19, aoMomento: textosDoPalco });
 const gatoIlha = new Gato(document.getElementById('gato-ilha'), { raio: 27, cx: 52, cy: 60 });
 gatos.push(gatoPilula, gatoIlha);
-document.getElementById('gato-ilha').addEventListener('click', () => gatoIlha.cutucar());
+
+// os dois gatos do palco fazem a mesma coisa (no app, só um está visível por vez)
+function cutucarPalco(origem, outro) {
+  const mo = origem.cutucar();
+  if (mo) outro.reagir(mo);
+}
+document.getElementById('gato-pilula').addEventListener('click', () => cutucarPalco(gatoPilula, gatoIlha));
+document.getElementById('gato-ilha').addEventListener('click', () => cutucarPalco(gatoIlha, gatoPilula));
 
 const seletor = document.getElementById('seletor');
 function escolher(chave) {
+  estadoPalco = chave;
   gatoPilula.mudarEstado(chave);
   gatoIlha.mudarEstado(chave);
-  document.getElementById('texto-pilula').textContent = TEXTOS.estados[chave].pilula;
-  const i = ILHA[chave];
-  document.getElementById('info-ilha').innerHTML =
-    `<div class="linha1"><b>${i.l1.split(' · ')[0]}</b>${i.l1.includes(' · ') ? ' · ' + i.l1.split(' · ')[1] : ''}</div>` +
-    `<div class="linha2">${i.l2}</div>` +
-    (i.botoes ? '<div class="botoes"><button>Negar</button><button>No terminal</button><button class="sim">Permitir</button></div>' : '');
-  for (const b of seletor.children) b.classList.toggle('ativo', b.dataset.estado === chave);
+  textosDoPalco(gatoPilula.momento?.nome);
+  for (const b of seletor.querySelectorAll('button')) b.classList.toggle('ativo', b.dataset.estado === chave);
 }
 for (const [chave, e] of Object.entries(ESTADOS)) {
+  if (e.extra) continue;
   const b = document.createElement('button');
   b.textContent = TEXTOS.estados[chave].rotulo;
   b.dataset.estado = chave;
   b.addEventListener('click', () => escolher(chave));
   seletor.appendChild(b);
 }
+const seletorMomentos = document.getElementById('seletor-momentos');
+seletorMomentos.innerHTML = '<span class="rotulo">Momentos:</span>';
+const BOTOES_MOMENTO = [
+  ['saudacao', TEXTOS.momentos.saudacao.rotulo],
+  ['carinho', TEXTOS.momentos.carinho.rotulo],
+  ['tonto', TEXTOS.momentos.tonto.rotulo],
+  ['prompt', 'Chegou prompt'],
+  ['patada', 'Patadinha'],
+];
+for (const [id, rotulo] of BOTOES_MOMENTO) {
+  const b = document.createElement('button');
+  b.textContent = rotulo;
+  b.addEventListener('click', () => {
+    if (id === 'prompt') return escolher('pensando'); // do cochilo, vem com susto
+    if (id === 'patada') { gatoPilula.patada(1); gatoIlha.patada(1); return; }
+    gatoPilula.reagir(id);
+    gatoIlha.reagir(id);
+  });
+  seletorMomentos.appendChild(b);
+}
 escolher('esperando');
+
+// a patadinha de verdade: o cursor passando rápido perto da pílula
+let vigia = criarVigiaDePatada();
+document.getElementById('sem-espera').addEventListener('change', ev => {
+  vigia = criarVigiaDePatada({ intervalo: ev.target.checked ? 0 : 30 });
+});
+const pilula = document.getElementById('pilula');
+addEventListener('pointermove', ev => {
+  const r = pilula.getBoundingClientRect();
+  const ret = { left: r.left, top: r.top, right: r.right, bottom: r.bottom, centroGato: r.left + 22 };
+  const lado = vigia(ev.clientX, ev.clientY, ret, performance.now() / 1000);
+  if (lado) gatoPilula.patada(lado);
+});
 
 addEventListener('pointermove', ev => { mascote.ponteiro.x = ev.clientX; mascote.ponteiro.y = ev.clientY; mascote.ponteiro.ativo = true; });
 document.addEventListener('pointerleave', () => { mascote.ponteiro.ativo = false; });
-addEventListener('resize', () => gatos.forEach(g => g.redimensionar()));
+addEventListener('resize', () => { gatos.forEach(g => g.redimensionar()); tamanhoReal(); });
 
 const chkReduzir = document.getElementById('reduzir');
 chkReduzir.checked = mascote.reduzirMovimento;
@@ -229,6 +421,7 @@ let ultimo = performance.now();
 function quadro(agora) {
   const dt = Math.min(.05, (agora - ultimo) / 1000);
   ultimo = agora;
+  for (const r of relogios) r(agora / 1000);
   for (const g of gatos) { g.atualizar(dt); g.desenhar(); }
   requestAnimationFrame(quadro);
 }

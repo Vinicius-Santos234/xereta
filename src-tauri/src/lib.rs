@@ -2,6 +2,7 @@
 // fica no JS.
 
 mod config;
+mod cursor;
 mod janela;
 mod ponte;
 
@@ -60,6 +61,8 @@ fn trazer_janela_do_pedido(estado: tauri::State<PonteLigada>, id: u64) -> bool {
 /// Fora do recorte a janela não desenha nem recebe clique: o clique cai no app de trás (D11).
 /// A janela fica sempre do tamanho da ilha expandida; só a forma muda, então o WebView
 /// nunca é redimensionado e a animação não engasga.
+/// Com `perto`, a página quer saber do cursor a até tantos px da região (o evento `cursor`, ver
+/// cursor.rs); sem, a vigia para.
 #[tauri::command]
 fn recortar(
     janela: tauri::WebviewWindow,
@@ -68,6 +71,7 @@ fn recortar(
     largura: i32,
     altura: i32,
     raio: i32,
+    perto: Option<i32>,
 ) -> Result<(), String> {
     if largura <= 0 || altura <= 0 || raio < 0 || largura > 16_384 || altura > 16_384 {
         return Err(format!("recorte inválido: {largura}×{altura}, raio {raio}"));
@@ -76,6 +80,7 @@ fn recortar(
     {
         use windows::Win32::Graphics::Gdi::{CreateRoundRectRgn, DeleteObject, SetWindowRgn};
         let hwnd = janela.hwnd().map_err(|e| e.to_string())?;
+        cursor::VIGIA.vigiar(hwnd.0 as isize, (x, y, largura, altura), perto.filter(|p| *p <= 16_384));
         unsafe {
             // CreateRoundRectRgn não inclui a borda direita e a de baixo, daí o +1.
             let regiao = CreateRoundRectRgn(x, y, x + largura + 1, y + altura + 1, raio * 2, raio * 2);
@@ -91,7 +96,7 @@ fn recortar(
         }
     }
     #[cfg(not(windows))]
-    let _ = (janela, x, y);
+    let _ = (janela, x, y, perto);
     Ok(())
 }
 
@@ -113,6 +118,10 @@ pub fn run() {
     }
     tauri::Builder::default()
         .manage(PonteLigada::default())
+        .setup(|app| {
+            cursor::iniciar(app.handle().clone());
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![recortar, ligar_ponte, responder_pedido, trazer_janela_do_pedido])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Xereta");

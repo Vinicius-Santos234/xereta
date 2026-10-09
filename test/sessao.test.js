@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { criarSessoes, somaDosArquivos, textoSimples } from '../src/sessao.js';
+import { criarSessoes, somaDosArquivos, textoSimples, estadoDoGato, PASSOS_DA_MARATONA } from '../src/sessao.js';
 
 // eventos no formato comum, como o adaptador do Claude Code entrega
 const base = { fonte: 'claude-code', sessao: 's1', projeto: 'vitrine' };
@@ -48,6 +48,17 @@ test('um resultado atrasado do prompt anterior não mexe no prompt novo (Codex, 
   const s = S.obter(base);
   assert.deepEqual(estados(s), ['atual:Lendo x']);
   assert.deepEqual(somaDosArquivos(s), { arquivos: 0, mais: 0, menos: 0 });
+});
+
+test('algumFim vê o cartão do fim de uma sessão que não está na tela (o cochilo espera por ele; Codex, 09/10)', () => {
+  const S = criarSessoes();
+  S.receber(ev('fim'));
+  S.receber(ev('pensando', { sessao: 's2' }));
+  const b = S.obter({ ...base, sessao: 's2' }).chave;
+  assert.equal(S.naTela(b), b, 'quem está na tela é a s2, escolhida por clique');
+  assert.equal(S.algumFim(), true);
+  S.dispensar(base);
+  assert.equal(S.algumFim(), false);
 });
 
 test('o fim conclui todos os passos ainda em curso', () => {
@@ -142,7 +153,7 @@ test('a sessão que parou com erro tem um fim que falhou', () => {
   const S = criarSessoes();
   S.receber(ferramenta('a', 'x'));
   const s = S.receber(ev('erro'));
-  assert.deepEqual(s.fim, { mensagem: null, falhou: true });
+  assert.deepEqual(s.fim, { mensagem: null, falhou: true, limite: false });
 });
 
 test('o OK dispensa o cartão do fim', () => {
@@ -305,4 +316,38 @@ test('textoSimples corta mensagem longa com reticências', () => {
   const t = textoSimples('palavra '.repeat(100));
   assert.ok(t.length <= 280);
   assert.ok(t.endsWith('…'));
+});
+
+test('o estado do gato (F3): procurando, maratona, a reação pequena e o fim', () => {
+  const S = criarSessoes();
+  const s = S.receber(ev('pensando'));
+  assert.equal(estadoDoGato(ev('pensando'), s), 'pensando');
+  S.receber(ferramenta('a', 'Rodando npm test'));
+  assert.equal(estadoDoGato(ferramenta('a'), s), 'trabalhando');
+  assert.equal(estadoDoGato(ev('ferramenta', { ferramenta: 'Grep', procura: true }), s), 'procurando');
+  // D9: uma ferramenta que falhou é a reação pequena; a sessão que falhou é a grande
+  assert.equal(estadoDoGato(ev('erro', { ferramenta: 'Grep', passoId: 'a' }), s), 'ops');
+  assert.equal(estadoDoGato(ev('pergunta'), s), 'pergunta');
+  assert.equal(estadoDoGato(ev('permissao'), s), 'esperando');
+
+  // a partir de 10 passos sem Stop, a caneca, procurando ou não; pedido e pergunta não
+  for (let i = 1; i < PASSOS_DA_MARATONA; i++) S.receber(ferramenta(`m${i}`, 'x'));
+  assert.equal(s.total, PASSOS_DA_MARATONA);
+  assert.equal(estadoDoGato(ferramenta('m9'), s), 'maratona');
+  assert.equal(estadoDoGato(ev('ferramenta', { procura: true }), s), 'maratona');
+  assert.equal(estadoDoGato(ev('permissao'), s), 'esperando');
+  assert.equal(estadoDoGato(ev('pergunta'), s), 'pergunta');
+  // o prompt novo zera a conta
+  S.receber(ev('pensando'));
+  assert.equal(estadoDoGato(ferramenta('n'), S.receber(ferramenta('n', 'y'))), 'trabalhando');
+
+  // o fim manda: feliz, erro ou cansado
+  assert.equal(estadoDoGato(ev('fim'), S.receber(ev('fim', { mensagem: 'ok' }))), 'feliz');
+  assert.equal(estadoDoGato(ev('erro'), S.receber(ev('erro'))), 'erro');
+  const limite = S.receber(ev('erro', { motivo: 'limite' }));
+  assert.equal(limite.fim.limite, true);
+  assert.equal(estadoDoGato(ev('erro'), limite), 'cansado');
+  // sem sessão (o sessao.js da ilha não carregou), pelo tipo
+  assert.equal(estadoDoGato(ev('ferramenta', { procura: true })), 'procurando');
+  assert.equal(estadoDoGato({ tipo: 'desconhecido' }), 'parado');
 });

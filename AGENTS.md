@@ -65,7 +65,10 @@ solta em `ilha.js`: outro idioma é um arquivo irmão com as mesmas chaves.
     fala com nenhuma API.
 11. **Memória parada abaixo de 100 MB**, como média de 5 minutos em release. A pílula desenha a
     15 qps (a 30, o WebView2 fazia a memória subir em serra) e a ilha aberta até 60. Mudança que
-    mexe em desenho ou no tamanho da janela mede de novo.
+    mexe em desenho ou no tamanho da janela mede de novo, **alternando com o commit anterior** (de
+    uma execução para outra a serra vem e vai). O desenho não cria gradiente nem `Path2D` por
+    quadro (usa `guardar`/`gradiente`; há teste): cada um segura memória nativa que só volta numa
+    coleta completa, e por isso a ilha pede uma a cada 20 s (`--expose-gc`).
 
 ## O formato dos hooks se confere, não se supõe
 

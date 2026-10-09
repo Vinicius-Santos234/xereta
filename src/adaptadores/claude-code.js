@@ -56,6 +56,8 @@ const ADAPTADOR_CLAUDE_CODE = (() => {
   };
 
   const EDICOES = new Set(['Edit', 'MultiEdit', 'Write']);
+  // as que só procuram: o gato fica "procurando" (§4 da 002)
+  const PROCURAS = new Set(['Grep', 'Glob', 'WebSearch', 'WebFetch']);
 
   // O PermissionRequest não traz `tool_use_id` (visto na E3). Para saber de qual ferramenta é o
   // pedido, a ponte compara esta assinatura (o nome e a entrada) com a do PreToolUse, que traz o
@@ -78,7 +80,10 @@ const ADAPTADOR_CLAUDE_CODE = (() => {
       const base = { fonte: 'claude-code', sessao: h.session_id, projeto: projeto(h.cwd) };
       const evento = (tipo, resumo) => ({ ...base, tipo, resumo });
       // o passo de uma ferramenta: o nome dela e o id que liga o antes (PreToolUse) ao depois
-      const passo = (tipo, resumo) => ({ ...evento(tipo, resumo), ferramenta: h.tool_name, passoId: h.tool_use_id });
+      const passo = (tipo, resumo) => ({
+        ...evento(tipo, resumo), ferramenta: h.tool_name, passoId: h.tool_use_id,
+        ...(PROCURAS.has(h.tool_name) ? { procura: true } : {}),
+      });
       switch (h.hook_event_name) {
         case 'SessionStart': return evento('inicio', T.eventos.inicio);
         case 'UserPromptSubmit': return evento('pensando', T.eventos.pensando);
@@ -112,7 +117,11 @@ const ADAPTADOR_CLAUDE_CODE = (() => {
           ...evento('fim', T.eventos.fim),
           mensagem: typeof h.last_assistant_message === 'string' ? h.last_assistant_message : null,
         };
-        case 'StopFailure': return evento('erro', T.eventos.parou);
+        // O limite de uso acabou: o gato fica cansado. O `error_type` vem da documentação e ainda não
+        // foi visto de verdade (V2b da 002); outro motivo, ou nenhum, é o erro de sempre.
+        case 'StopFailure': return h.error_type === 'rate_limit'
+          ? { ...evento('erro', T.eventos.limite), motivo: 'limite' }
+          : evento('erro', T.eventos.parou);
         case 'SessionEnd': return evento('saida', T.eventos.saida);
         default: return null;
       }

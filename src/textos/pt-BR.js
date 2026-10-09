@@ -33,6 +33,7 @@ const TEXTOS = {
     arquivos: ({ arquivos, mais, menos }) => `${arquivos === 1 ? '1 arquivo' : `${arquivos} arquivos`} (+${mais} −${menos})`,
     terminou: projeto => `${projeto} terminou`,
     parou: projeto => `${projeto} parou com erro`,
+    noLimite: projeto => `${projeto} parou no limite de uso`,
     semMensagem: 'Prontinho!',
     ok: 'OK',
     mais: n => `+${n}`,
@@ -118,6 +119,7 @@ const TEXTOS = {
     negado: alvo => `Negado: ${alvo}`,
     fim: 'Prontinho!',
     parou: 'Parou com erro',
+    limite: 'Bati no limite de uso',
     saida: 'Sessão encerrada',
   },
   estados: {
@@ -127,6 +129,11 @@ const TEXTOS = {
     esperando: { rotulo: 'Esperando você', fala: 'Opa! Posso?', pilula: 'Posso?' },
     feliz: { rotulo: 'Feliz', fala: 'Prontinho!', pilula: 'Prontinho!' },
     erro: { rotulo: 'Erro', fala: 'Deu ruim…', pilula: 'Deu ruim' },
+    procurando: { rotulo: 'Procurando', fala: 'Cadê, cadê…', pilula: 'Procurando…' },
+    pergunta: { rotulo: 'Pergunta', fala: 'Tenho uma pergunta pra você.', pilula: 'Pergunta' },
+    maratona: { rotulo: 'Maratona', fala: 'Mais um cafezinho e sigo.', pilula: 'Maratona!' },
+    cochilo: { rotulo: 'Cochilando', fala: 'Zzz…', pilula: 'Zzz…' },
+    cansado: { rotulo: 'Cansado', fala: 'Bati no limite de uso.', pilula: 'No limite' },
     oi: { rotulo: 'Oi!', fala: 'Opa, cheguei!', pilula: 'Opa!' },
     feito: { rotulo: 'Tá feito', fala: 'Tá feito!', pilula: 'Tá feito!' },
     testes: { rotulo: 'Testes no verde', fala: 'Tudo verdinho!', pilula: 'Verdinho!' },
@@ -135,5 +142,12 @@ const TEXTOS = {
     ops: { rotulo: 'Ops', fala: 'Ops.', pilula: 'Ops' },
     eita: { rotulo: 'Eita', fala: 'Eita… tem certeza?', pilula: 'Eita…' },
     socorro: { rotulo: 'Deu muito ruim', fala: 'DEU MUITO RUIM!', pilula: 'Socorro!' },
+  },
+  // reações curtas por cima do estado (MOMENTOS do gato.js); sem fala, o texto do estado continua
+  momentos: {
+    susto: { rotulo: 'Susto ao acordar' },
+    carinho: { rotulo: 'Carinho', fala: 'Rrrrrr…', pilula: 'Rrrrrr…' },
+    tonto: { rotulo: 'Cutucão', fala: 'Ei! Para com isso… volto em 3 segundos.', pilula: 'Ei! Para!' },
+    saudacao: { rotulo: 'Saudação', fala: 'Opa, cheguei!', pilula: 'Opa!' },
   },
 };
