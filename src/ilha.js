@@ -57,11 +57,12 @@ listen('cursor', ({ payload }) => {
     vigiaPatada.esquecer();
     return;
   }
-  const [x, y] = payload, p = telaPilula;
+  // [x, y] em px físicos da tela e o tempo desde a leitura anterior do Rust, em ms
+  const [x, y, ms] = payload, p = telaPilula;
   mascote.ponteiro.ativo = true;
   mascote.ponteiro.x = (x - p.janelaX) / esc;
   mascote.ponteiro.y = (y - p.janelaY) / esc;
-  const lado = vigiaPatada(x, y, p, performance.now() / 1000);
+  const lado = vigiaPatada(x, y, p, performance.now() / 1000, ms / 1000);
   if (lado) gatoPilula.patada(lado);
 }).catch(err => console.error('[xereta] cursor', err?.name ?? 'erro'));
 

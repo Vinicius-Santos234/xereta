@@ -7,7 +7,7 @@
 
 use std::sync::atomic::{AtomicBool, AtomicI32, AtomicIsize, Ordering};
 use std::sync::Mutex;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use tauri::Emitter;
 
@@ -51,32 +51,55 @@ pub fn se_perto(cursor: (i32, i32), ret: (i32, i32, i32, i32), perto: i32) -> Op
     (perto > 0 && dx <= p && dy <= p && dx * dx + dy * dy <= p * p).then_some(cursor)
 }
 
-/// Liga a linha de fundo. Ela avisa a página com o evento `cursor`: a posição enquanto o cursor
-/// está perto, e `null` uma vez quando ele se afasta (ou quando a vigia para).
+/// O que já foi avisado à página, para avisar só o que muda: parado perto da pílula, avisar a 15
+/// qps a mesma posição custava 1,6 ponto de CPU à toa (a página guarda a última posição).
+#[derive(Default)]
+struct Avisos {
+    avisado: Option<(i32, i32)>,
+}
+
+impl Avisos {
+    /// Uma volta do laço. `reconfigurou`: o `recortar` mexeu na vigia desde a volta anterior (a
+    /// escala ou a forma mudou), e aí a leitura vai mesmo igual, para a página refazer a conta com a
+    /// janela nova (Codex, 09/10); `leitura`: o cursor, se perto (só se lê com a vigia ligada).
+    /// Devolve o que avisar: a posição, `null` (o cursor se afastou ou a vigia parou, uma vez) ou nada.
+    fn volta(&mut self, reconfigurou: bool, vigiando: bool, leitura: Option<(i32, i32)>) -> Option<Option<(i32, i32)>> {
+        if !vigiando {
+            return self.avisado.take().map(|_| None);
+        }
+        let mudou = reconfigurou || self.avisado != leitura;
+        self.avisado = leitura;
+        mudou.then_some(leitura)
+    }
+}
+
+/// Liga a linha de fundo. Ela avisa a página com o evento `cursor`: `[x, y, ms]` quando o cursor
+/// se mexe perto da pílula (`ms`: desde a leitura anterior, para a patadinha medir a velocidade de
+/// um movimento que vem depois de uma pausa sem avisos), e `null` uma vez quando ele se afasta ou
+/// a vigia para.
 pub fn iniciar(app: tauri::AppHandle) {
     let vigia = &VIGIA;
     std::thread::spawn(move || {
-        let mut estava_perto = false;
+        let mut avisos = Avisos::default();
+        let mut ultima = Instant::now();
         loop {
             std::thread::sleep(INTERVALO);
             let perto = vigia.perto.load(Ordering::Relaxed);
-            if vigia.mudou.swap(false, Ordering::Relaxed) && estava_perto && perto == 0 {
-                estava_perto = false;
-                let _ = app.emit("cursor", None::<(i32, i32)>);
-            }
-            if perto == 0 {
-                continue;
-            }
-            let regiao = *vigia.regiao.lock().unwrap_or_else(|e| e.into_inner());
-            let Some(agora) = ler(vigia.janela.load(Ordering::Relaxed), regiao, perto) else {
-                if estava_perto {
-                    estava_perto = false;
-                    let _ = app.emit("cursor", None::<(i32, i32)>);
-                }
-                continue;
+            let reconfigurou = vigia.mudou.swap(false, Ordering::Relaxed);
+            let leitura = if perto > 0 {
+                let regiao = *vigia.regiao.lock().unwrap_or_else(|e| e.into_inner());
+                ler(vigia.janela.load(Ordering::Relaxed), regiao, perto)
+            } else {
+                None
             };
-            estava_perto = true;
-            let _ = app.emit("cursor", Some(agora));
+            let agora = Instant::now();
+            let ms = u32::try_from(agora.duration_since(ultima).as_millis()).unwrap_or(u32::MAX);
+            ultima = agora;
+            match avisos.volta(reconfigurou, perto > 0, leitura) {
+                Some(Some((x, y))) => { let _ = app.emit("cursor", Some((x, y, ms))); }
+                Some(None) => { let _ = app.emit("cursor", None::<(i32, i32, u32)>); }
+                None => {}
+            }
         }
     });
 }
@@ -104,7 +127,33 @@ fn ler(_hwnd: isize, _regiao: (i32, i32, i32, i32), _perto: i32) -> Option<(i32,
 
 #[cfg(test)]
 mod testes {
-    use super::se_perto;
+    use super::{se_perto, Avisos};
+
+    #[test]
+    fn so_avisa_quando_a_posicao_muda() {
+        let mut a = Avisos::default();
+        assert_eq!(a.volta(true, true, Some((1, 2))), Some(Some((1, 2)))); // vigia ligada, cursor perto
+        assert_eq!(a.volta(false, true, Some((1, 2))), None); // parado perto: nada (09/10)
+        assert_eq!(a.volta(false, true, Some((1, 2))), None);
+        assert_eq!(a.volta(false, true, Some((3, 2))), Some(Some((3, 2)))); // mexeu
+        assert_eq!(a.volta(false, true, None), Some(None)); // afastou: `null` uma vez
+        assert_eq!(a.volta(false, true, None), None); // longe e continua longe
+        assert_eq!(a.volta(false, false, None), None); // vigia parada sem nada avisado: nada
+    }
+
+    #[test]
+    fn reconfigurar_reenvia_a_mesma_posicao_e_parar_a_vigia_manda_null() {
+        let mut a = Avisos::default();
+        a.volta(false, true, Some((5, 5)));
+        // a escala mudou com o cursor parado: a página precisa da posição de novo (Codex, 09/10)
+        assert_eq!(a.volta(true, true, Some((5, 5))), Some(Some((5, 5))));
+        assert_eq!(a.volta(false, true, Some((5, 5))), None);
+        // a ilha abriu (a vigia para) com o cursor perto: `null` uma vez, e depois nada
+        assert_eq!(a.volta(true, false, None), Some(None));
+        assert_eq!(a.volta(false, false, None), None);
+        // recolheu com o cursor parado no mesmo lugar: ele volta a ser avisado
+        assert_eq!(a.volta(true, true, Some((5, 5))), Some(Some((5, 5))));
+    }
 
     const PILULA: (i32, i32, i32, i32) = (100, 0, 240, 34);
 

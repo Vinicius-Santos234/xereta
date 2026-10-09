@@ -45,7 +45,7 @@ testes passando."* Não preciso abrir o terminal para saber o que aconteceu.
 | D6 | Várias sessões | A ilha mostra **a sessão que mudou por último**, com "2 sessões" no canto; um clique troca | Você roda mais de uma sessão. Hoje a ilha mistura todas |
 | D7 | Selo de estado | Um **sinal na orelha clara do gato**, onde hoje fica o miolo rosa: `…` pensando, `⋯` trabalhando, `!` esperando, `?` pergunta, ✓ pronto, ✗ erro. **Emenda de 08/10, aprovada por você no protótipo:** mais a **lupa** (procurando), o **z** (cochilo) e a **bateria vazia** (cansado); o sinal fica numa placa da cor do estado; no radar e na hélice, a orelha do selo balança em vez de dar a volta | Dá para ler o estado na pílula, onde os gestos não cabem. Fica na orelha, e não num círculo no canto da cabeça como no Mochi (D12 da 001). A 100% de escala, quem separa os estados é a cor da placa (aprovado assim) |
 | D8 | Reação de entrada | Cada troca de estado ganha uma reação **curta, de menos de 1 s**, com as molas que já existem: pronto pula, erro sacode, esperando estica as orelhas | Segue o "Curto" de `ideias/mascote.md`. Com "reduzir movimento" ligado, não há reação |
-| D10 | Cursor perto da pílula | Ler a posição do cursor (`cursorPosition()` da API de janela do Tauri) a 15 qps, só com a ilha recolhida, só para a patadinha e o olhar | O recorte faz a janela não existir fora da ilha, e por isso ela não recebe `pointermove` de fora. Ler a posição não captura nada nem rouba clique |
+| D10 | Cursor perto da pílula | Ler a posição do cursor a 15 qps, só com a ilha recolhida, só para a patadinha e o olhar. **Emenda de 08/10 (registrada em 09/10):** quem lê é o **Rust** (`cursor.rs`, `GetCursorPos` numa linha de fundo), e a página só recebe o evento `cursor` com ele a até 240 px lógicos da pílula; o `recortar` diz quando vigiar. O `cursorPosition()` do Tauri não é mais usado | O recorte faz a janela não existir fora da ilha, e por isso ela não recebe `pointermove` de fora. Ler a posição não captura nada nem rouba clique. Pelo JS, uma ida e volta pela ponte de comandos por quadro custava 7,5 pontos de CPU e trazia a serra de memória de volta (F3) |
 | D11 | Linha do tempo | Clicar no cartão da sessão abre a **linha do tempo**: os últimos 10 passos com a hora (`14:30 ✓ npm test · 14:31 ✎ auth.ts · 14:32 ✓ Prontinho!`), na ilha grande da 003 (D1). Só na memória, como a D5 | É o "o que ele fez enquanto eu estava longe". Duas linhas no cartão (D1/D2) não contam uma sessão inteira |
 | D9 | Escala de exagero | Reação grande só para o que é grande: a sessão falhar (`StopFailure`) ou um pedido de risco alto (003). Um `grep` sem resultado ganha a reação pequena | Como em `ideias/mascote.md`: se o olho saltar a cada `grep`, a piada morre no primeiro dia |
 
@@ -85,7 +85,9 @@ O "Cansado" aqui reage **quando o limite já acabou**, que é o que o hook infor
 na F5 da 005.
 
 **Saudação ao abrir:** o gato espia pela borda e acena com a cara "oi" que já existe. Uma vez
-por abertura do app.
+por abertura do app. **Decisão sua de 09/10:** a ilha abre sozinha por 2 s para o aceno aparecer
+(na pílula ele não cabe) e recolhe depois, salvo mouse em cima, pedido ou cartão do fim. Um evento
+no meio não a corta.
 
 **Carinho e cutucão (uma escada):** três cliques no gato em 2 s são **carinho**: ele fecha os
 olhos, relaxa as orelhas e **ronrona** (uma vibração sutil por ~1 s, e o som da 005 se estiver
@@ -272,6 +274,26 @@ enquanto está recolhida (D10).
 > `SessionEnd` e retomada) ganhava o 👋 de novo: agora o `sessao.js` lembra as chaves já vistas
 > (até 200). **113 testes em JS.**
 >
+> **09/10 — Memória medida de novo** (regra 11: a saudação passou a abrir a ilha e a D13 mexeu no
+> desenho). Release, parada, 60 s de aquecimento e 30 amostras de 10 s do conjunto de trabalho
+> privado do app e dos 6 processos do WebView2, alternando com o `c0ece5e` (antes da F3), cada
+> rodada num comando só (nenhum evento chega ao app medido). **Agora (`9fda685`): 72,8 e 75,4 MB,
+> planas** (71,8–76,9). Antes da F3: 86,2 e 79,5 MB, em serra (71,3–90,8). Dentro da meta de 100 MB.
+>
+> **09/10 — O cursor parado perto da pílula (critério de 0,5 ponto de CPU).** O `cursor.rs` avisava a
+> página a 15 qps mesmo com o cursor parado: a mesma posição, à toa. Agora só avisa quando a posição
+> muda (`aviso`, com teste no Rust); a página já guardava a última, e a vigia da patadinha ignora
+> uma leitura que chega mais de 0,25 s depois da anterior. Medido na release, 3 min por rodada, o
+> cursor posto por script 100 px à direita da pílula, alternando: **sem a correção 6,98 e 7,03%** de
+> um núcleo; **com ela 5,77 e 5,95%**; com o cursor longe, 5,55%. De +1,4 para **+0,2 a 0,4 ponto**:
+> dentro do critério. Revisão do Codex, só de leitura: 2 achados, corrigidos. (1) Depois de uma
+> pausa sem avisos, a vigia comparava o movimento rápido com o aviso de 1 s antes e o descartava
+> (o buraco de 0,25 s): a patadinha sumia num golpe de uma leitura. Agora o evento é `[x, y, ms]`,
+> com o tempo desde a leitura anterior medido pelo Rust, e a vigia usa esse tempo (teste com
+> controle). (2) Com a escala do Windows mudando e o cursor parado perto, o olhar ficava na conta
+> velha: agora o `recortar` faz a leitura seguinte ser reenviada mesmo igual. A lógica do laço
+> saiu para `Avisos`, testada volta a volta. **32 testes no Rust, 114 em JS.**
+>
 > **08/10 (noite) — Ligada aos eventos; a memória resolvida.** O que entrou:
 > - **Estados pelos eventos:** `estadoDoGato` no `sessao.js` (com testes). `Grep`/`Glob`/`WebSearch`/
 >   `WebFetch` → procurando (o adaptador marca `procura`); 10 passos ou mais desde o prompt →
@@ -364,7 +386,7 @@ enquanto está recolhida (D10).
 | V2 | Nomes dos campos: `old_string`/`new_string`/`replace_all` (Edit), `edits[]` (MultiEdit) e `content` (Write)? | Na E3. **Respondida em 05/10:** Edit e Write como o Coucou. Com a emenda da D3, quem conta é o `tool_response` (V5) |
 | V5 | O que o `PostToolUse` traz de Edit e Write? | **Respondida em 07/10 (2.1.292), numa sessão real pelo plano com um hook que gravava o corpo:** `tool_use_id`, `duration_ms` e um `tool_response` com `structuredPatch` (trechos com `lines` começando por `+`, `-` ou espaço), `originalFile` (o arquivo inteiro de antes) e `userModified`. Edit: também `oldString`, `newString`, `replaceAll`; um `replace_all` que trocou 2 linhas veio com as 2. Write: `type` `"create"` (patch vazio, `originalFile: null`) ou `"update"` (patch real: `−1 +2` numa troca de linha mais uma linha nova). O MultiEdit não foi testado (o teste não pediu um); o adaptador lê o mesmo `structuredPatch` |
 | V2b | O `StopFailure` traz `error_type: "rate_limit"` quando o limite acaba? | Na primeira vez que acontecer. Até lá, o teste é com `curl` |
-| V4 | O `cursorPosition()` do Tauri 2 devolve a posição fora da janela no Windows, e qual permissão (`core:window:…`) ele pede? | D10, antes da patadinha. **Respondida em 08/10 pelo código-fonte:** devolve (via `GetCursorPos`, em pixels físicos da tela); a permissão é `core:window:allow-cursor-position`. Falta ver no app |
+| V4 | O `cursorPosition()` do Tauri 2 devolve a posição fora da janela no Windows, e qual permissão (`core:window:…`) ele pede? | D10, antes da patadinha. **Respondida em 08/10 pelo código-fonte:** devolve (via `GetCursorPos`, em pixels físicos da tela); a permissão é `core:window:allow-cursor-position`. **Visto no app em 08/10** (a patadinha com o cursor passando de verdade). Depois disso a leitura foi para o Rust (emenda da D10), que chama o mesmo `GetCursorPos` |
 | V3 | O `PreToolUse` de subagentes (`Task`/`Agent`) chega com o mesmo `session_id`? | Na E3. Define se os passos de um subagente somam na sessão. **Respondida em 07/10: chega com o mesmo**; os passos do Codex como subagente apareceram no cartão desta conversa |
 | V6 | Fechar a janela do terminal manda o `SessionEnd`? | **Respondida por você em 07/10: manda.** A contagem cai na hora. A 1 hora sem eventos fica só como rede para um encerramento que não avise |
 

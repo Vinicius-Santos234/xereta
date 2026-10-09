@@ -185,6 +185,18 @@ test('a vigia da patadinha: rápido, perto e fora da pílula; uma a cada 30 s', 
   assert.equal(w(250, 40, ret, 1), 0);
 });
 
+test('a patadinha depois de uma pausa: o Rust só avisa quando o cursor mexe e diz o tempo entre as leituras (Codex, 09/10)', () => {
+  const ret = { left: 100, top: 0, right: 240, bottom: 34, centroGato: 122 };
+  const v = criarVigiaDePatada();
+  assert.equal(v(350, 40, ret, 0, .066), 0);
+  // parado por quase 1 s (nenhum aviso), e depois 80 px numa leitura de 66 ms: 1.212 px/s
+  assert.equal(v(270, 40, ret, .99, .066), 1);
+  // devagar depois de uma pausa continua sendo devagar
+  const w = criarVigiaDePatada();
+  assert.equal(w(350, 40, ret, 0, .066), 0);
+  assert.equal(w(345, 40, ret, .99, .066), 0);
+});
+
 test('o desenho guarda gradientes e caminhos em vez de criar a cada quadro (memória do WebView2)', () => {
   // cada gradiente e cada Path2D segura memória nativa que o coletor do V8 não enxerga: criados a
   // cada quadro, faziam a memória subir em serra até ~210 MB (F3 da 002)

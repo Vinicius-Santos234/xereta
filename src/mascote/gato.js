@@ -293,11 +293,16 @@ function desenharZ(c, r) {
 function criarVigiaDePatada({ distancia = 60, velocidade = 900, intervalo = 30 } = {}) {
   let anterior = null;
   let ultima = -Infinity;
-  const vigia = (x, y, ret, t) => {
+  // `dt`: o tempo entre esta leitura e a anterior, como o Rust mediu. Ele só avisa quando o cursor
+  // mexe (parado, a mesma posição seria à toa), então o aviso anterior pode ter chegado há 1 s: o
+  // cursor estava lá, parado, até a leitura de 66 ms atrás. Sem `dt`, vale a hora de chegada, e um
+  // buraco grande não vira velocidade.
+  const vigia = (x, y, ret, t, dt) => {
     const a = anterior;
     anterior = { x, y, t };
-    if (!a || t <= a.t || t - a.t > .25) return 0;
-    const v = Math.hypot(x - a.x, y - a.y) / (t - a.t);
+    const passo = dt ?? t - (a?.t ?? t);
+    if (!a || passo <= 0 || (dt == null && passo > .25)) return 0;
+    const v = Math.hypot(x - a.x, y - a.y) / passo;
     const dx = Math.max(ret.left - x, 0, x - ret.right);
     const dy = Math.max(ret.top - y, 0, y - ret.bottom);
     const d = Math.hypot(dx, dy);
