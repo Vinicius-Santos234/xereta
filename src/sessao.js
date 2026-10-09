@@ -25,12 +25,22 @@ const chaveDoArquivo = caminho => String(caminho).replace(/\\/g, '/').toLowerCas
  */
 export function criarSessoes({ agora = () => Date.now() } = {}) {
   const sessoes = new Map();
+  // As sessões que a ilha já viu, mesmo as que saíram do Map (pelo teto ou pelo SessionEnd e
+  // retomadas): só a primeira vez de verdade ganha o 👋 (D13; Codex, 09/10). Só as chaves, com teto.
+  const conhecidas = new Set();
+  const MAX_CONHECIDAS = 200;
 
   function abrir(evento) {
     const chave = chaveDe(evento);
     let s = sessoes.get(chave);
+    // `primeiro`: este é o primeiro evento que a ilha vê da sessão (o 👋 no prompt dela, D13)
+    if (s) s.primeiro = false;
     if (!s) {
-      s = { chave, fonte: evento.fonte, sessao: evento.sessao, projeto: undefined, total: 0, passos: [], ids: new Set(), arquivos: new Map(), fim: null };
+      const primeiro = !conhecidas.has(chave);
+      conhecidas.delete(chave);
+      conhecidas.add(chave);
+      if (conhecidas.size > MAX_CONHECIDAS) conhecidas.delete(conhecidas.values().next().value);
+      s = { chave, fonte: evento.fonte, sessao: evento.sessao, projeto: undefined, total: 0, passos: [], ids: new Set(), arquivos: new Map(), fim: null, primeiro };
       sessoes.set(chave, s);
       if (sessoes.size > MAX_SESSOES) sessoes.delete(sessoes.keys().next().value);
     } else {
@@ -180,15 +190,20 @@ const ESTADO_DO_TIPO = {
 export const PASSOS_DA_MARATONA = 10;
 
 /**
- * O estado do gato para o status que a ilha mostra (F3). O fim manda: feliz, erro ou, no limite de
- * uso, cansado. Uma ferramenta que falhou é a reação pequena (D9: um grep sem resultado não pode
- * fazer o olho saltar). Dez passos ou mais desde o prompt viram maratona, procurando ou não, para a
- * caneca não piscar a cada busca. Pedido e pergunta não chegam à maratona.
+ * O estado do gato para o status que a ilha mostra (F3). O fim manda: feito (👍, editou arquivos) ou
+ * feliz, socorro (😱, a sessão morreu com erro) ou, no limite de uso, cansado (D13). Uma ferramenta
+ * que falhou é a reação pequena (D9: um grep sem resultado não pode fazer o olho saltar). O teste que
+ * terminou bem é o 👌, mesmo na maratona. Dez passos ou mais desde o prompt viram maratona,
+ * procurando ou não, para a caneca não piscar a cada busca. Pedido e pergunta não chegam à maratona.
  */
 export function estadoDoGato(evento, sessao = null) {
-  if (sessao?.fim) return !sessao.fim.falhou ? 'feliz' : sessao.fim.limite ? 'cansado' : 'erro';
+  if (sessao?.fim) {
+    if (!sessao.fim.falhou) return sessao.arquivos.size ? 'feito' : 'feliz';
+    return sessao.fim.limite ? 'cansado' : 'socorro';
+  }
+  if (evento?.tipo === 'concluiu' && evento.teste) return 'testes';
   let estado = ESTADO_DO_TIPO[evento?.tipo] ?? 'parado';
-  if (evento?.tipo === 'erro' && evento.ferramenta) estado = 'ops';
+  if (evento?.tipo === 'erro') estado = evento.ferramenta ? 'ops' : 'socorro';
   if (estado === 'trabalhando' && evento.procura) estado = 'procurando';
   if ((estado === 'trabalhando' || estado === 'procurando') && (sessao?.total ?? 0) >= PASSOS_DA_MARATONA) estado = 'maratona';
   return estado;

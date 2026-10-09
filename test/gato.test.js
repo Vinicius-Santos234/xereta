@@ -96,6 +96,17 @@ test('três cliques em 2 s são carinho; seis, tonto; com pedido na tela, nenhum
   assert.equal(p.estado, 'esperando');
 });
 
+test('o 👋 da sessão nova não atropela outro momento, como o susto ou a saudação (Codex, 09/10)', () => {
+  for (const antes of ['susto', 'saudacao', 'carinho']) {
+    const g = novo('pensando');
+    g.reagir(antes);
+    assert.equal(g.reagir('oi'), false, antes);
+    assert.equal(g.momento.nome, antes);
+  }
+  const g = novo('pensando');
+  assert.equal(g.reagir('oi'), true);
+});
+
 test('os cliques contam no relógio de verdade: escondido, o gato não atualiza, mas o tempo passa (Codex, 09/10)', () => {
   const g = novo('parado');
   g.cutucar(); g.cutucar();

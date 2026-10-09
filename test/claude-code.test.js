@@ -211,6 +211,28 @@ test('as ferramentas de busca vêm marcadas como procura (o gato fica procurando
   for (const nome of ['Bash', 'Read', 'Edit']) assert.equal(hook('PreToolUse', { tool_name: nome, tool_input: {} }).procura, undefined, nome);
 });
 
+test('um Bash de teste que terminou bem vem marcado como teste (a cara 👌, D13)', () => {
+  const bash = (nome, command) => hook(nome, { tool_name: 'Bash', tool_input: { command }, tool_use_id: 't' });
+  for (const c of ['npm test', 'cd src-tauri && cargo test', 'node --test test/', 'npm run test -- --watch=false',
+    'pytest -q', 'python -m pytest', 'npx vitest run', 'go test ./...', 'dotnet test', 'flutter test', 'pnpm test',
+    'CI=1 npm test', 'npx jest', 'yarn jest --ci', 'npm test 2>&1 | tail -3', 'npm run lint; npm test', './gradlew test']) {
+    assert.equal(bash('PostToolUse', c).teste, true, c);
+  }
+  // falar de teste não é rodar teste (Codex, 09/10)
+  for (const c of ['git status', 'npm install', 'cat test/gato.test.js', 'npm run build', 'echo testes',
+    'echo npm test', 'pip install pytest', 'npm install jest', 'grep -n "cargo test" README.md']) {
+    assert.equal(bash('PostToolUse', c).teste, undefined, c);
+  }
+  // só no resultado: começar a rodar ou falhar não é o verde
+  assert.equal(bash('PreToolUse', 'npm test').teste, undefined);
+  assert.equal(bash('PostToolUseFailure', 'npm test').teste, undefined);
+  assert.equal(hook('PostToolUse', { tool_name: 'Read', tool_input: { command: 'npm test' } }).teste, undefined);
+  // linear: um comando enorme passa rápido
+  const t0 = performance.now();
+  bash('PostToolUse', 'npm '.repeat(50_000) + 'x');
+  assert.ok(performance.now() - t0 < 50);
+});
+
 test('StopFailure de rate_limit vira o limite de uso; outro motivo é o erro de sempre', () => {
   const limite = hook('StopFailure', { error_type: 'rate_limit' });
   assert.equal(limite.tipo, 'erro');

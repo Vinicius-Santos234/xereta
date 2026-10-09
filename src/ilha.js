@@ -311,8 +311,12 @@ function mostrarConta() {
 }
 
 // o pedido na tela: "vitrine · quer rodar · Claude Code", o alvo e os botões
+// D13: o pedido que está há 10 s na tela sem resposta ganha o 👉 (o gato aponta para os botões)
+const ESPERA_AQUI = 10_000; // ms
+let timerAqui = null;
+
 function mostrarPedido(evento, mais) {
-  definirEstado('esperando');
+  definirEstado(performance.now() - naTela.desde >= ESPERA_AQUI ? 'aqui' : 'esperando');
   const { verbo, alvo } = evento.pedido ?? { verbo: '', alvo: evento.resumo };
   const fonte = TEXTOS.fontes[evento.fonte] ?? evento.fonte;
   escrever({
@@ -333,6 +337,8 @@ function mostrar() {
     naTela.id = primeiro;
     naTela.desde = performance.now();
     gesto = null; // um botão apertado no pedido anterior não vale para este
+    clearTimeout(timerAqui);
+    if (primeiro !== null) timerAqui = setTimeout(mostrar, ESPERA_AQUI + 50);
   }
   mostrarConta();
   el.classList.toggle('pedindo', abertos.length > 0);
@@ -342,11 +348,20 @@ function mostrar() {
   else mostrarOciosa(); // título, subtítulo e alvo do pedido que acabou não podem ficar para trás
 }
 
+// o momento começa no gato que está na tela, e o escondido o herda (como nos cliques)
+function reagirNaTela(nome) {
+  const [visivel, outro] = expandida ? [gatoIlha, gatoPilula] : [gatoPilula, gatoIlha];
+  if (visivel.reagir(nome)) outro.herdarMomento(visivel);
+}
+
 function aoMudarPonte({ evento, saiu }) {
+  const dormia = dormindo;
   acordar(); // qualquer novidade da ponte acorda o gato e recomeça a conta do cochilo
+  let sessaoNova = null; // D13: o prompt de uma sessão que a ilha não conhecia ganha o 👋
   if (evento) {
-    sessoes?.receber(evento);
+    const s = sessoes?.receber(evento);
     const chave = chaveDe(evento);
+    if (s?.primeiro && (evento.tipo === 'pensando' || evento.tipo === 'inicio')) sessaoNova = chave;
     if (evento.tipo === 'saida') {
       // F2: o SessionEnd tira a sessão da conta e da tela
       statusDe.delete(chave);
@@ -373,6 +388,8 @@ function aoMudarPonte({ evento, saiu }) {
   }
 
   mostrar();
+  // o 👋 só por cima do "pensando" da própria sessão na tela; quem acordava já ganhou o susto
+  if (sessaoNova && !dormia && !Ponte.abertos.length && sessoes.naTela(escolhida) === sessaoNova) reagirNaTela('oi');
   // um pedido ou o cartão do fim (D4b) abrem a ilha e a deixam aberta até a resposta ou o OK
   if (Ponte.abertos.length || cartaoDoFim()) abrirSozinha();
   else if (!mouseDentro) agendarRecolher(); // a ilha só ficou aberta por causa do pedido ou do fim

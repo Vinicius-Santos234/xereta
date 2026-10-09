@@ -40,6 +40,7 @@ testes passando."* Não preciso abrir o terminal para saber o que aconteceu.
 | D4 | Fim da sessão | Mostrar o começo de `last_assistant_message` do `Stop`: até 2 linhas, sem a marcação de Markdown | Os docs dizem que o `Stop` traz esse campo. Precisa ser conferido na E3 (V1) |
 | D4b | O cartão do fim | Fica aberto **até um OK**, ou até o próximo evento daquela sessão. Sem "Abrir terminal" (ver §2). **Decidido por você em 07/10:** "aberto" quer dizer **a ilha aberta**. O `Stop` abre a ilha sozinha, como um pedido, e ela não recolhe com o mouse fora até o OK | É o P5: quem estava longe da tela volta e ainda encontra o resultado. Sumir sozinho depois de 1 s jogaria fora justamente o que essa pessoa queria ler |
 | D12 | O pedido respondido no terminal | **Nova em 07/10, decisão sua.** Um pedido sai da ilha sem decisão dela só quando chega o **resultado da ferramenta dele** (`PostToolUse`/`PostToolUseFailure` com o mesmo `tool_use_id`) ou quando **a sessão muda** (prompt novo, `Stop`, `StopFailure`, `SessionEnd`). O `PermissionRequest` não traz id: a ponte o liga ao `PreToolUse` com o mesmo nome e a mesma entrada (uma assinatura de tamanho + FNV-1a). Por isso o `PostToolUse` passa a valer para **todas** as ferramentas (matcher `*`) | A regra da E4 ("qualquer evento novo da sessão solta o pedido") quebrava com chamadas em paralelo: o `PreToolUse` da ferramenta irmã soltava o pedido anterior, que ficava só no terminal. Visto por você ao atualizar o vault (três leituras: a ilha mostrou a terceira enquanto o terminal pedia a primeira) e confirmado no transcript |
+| D13 | As caras extras que nunca apareciam | **Nova em 09/10, decisão sua.** Cada cara ganha um gatilho do que já chega: **testes** (👌) num `Bash` que terminou bem e cujo comando é de teste (`npm test`, `cargo test`, `node --test`, `pytest`, `jest`, `vitest`, `go test`…); **aqui** (👉) quando um pedido está na tela há 10 s sem resposta; **socorro** (😱) no `StopFailure` que não é limite de uso (o erro comum fica para a ponte com problema); **oi** (👋) como momento, por cima do "pensando", no prompt de uma sessão que a ilha ainda não conhecia; **feito** (👍) no fim de uma sessão que editou arquivos, e o feliz no fim que só respondeu ou leu. A **eita** espera a 003 (o risco no pedido) | Você notou que a cara dos testes só aparecia pela bandeja. Das 8 caras extras da E1, só o ops e o negou tinham gatilho. O `SessionStart` não aceita hook `http` (E3 da 001), então o oi ficou sem o evento que era dele |
 | D5 | Privacidade | A mensagem final e os nomes de arquivo **só vivem na memória** da página, como na D9 da 001 | A mensagem final pode citar segredo, igual ao `tool_input` |
 | D6 | Várias sessões | A ilha mostra **a sessão que mudou por último**, com "2 sessões" no canto; um clique troca | Você roda mais de uma sessão. Hoje a ilha mistura todas |
 | D7 | Selo de estado | Um **sinal na orelha clara do gato**, onde hoje fica o miolo rosa: `…` pensando, `⋯` trabalhando, `!` esperando, `?` pergunta, ✓ pronto, ✗ erro. **Emenda de 08/10, aprovada por você no protótipo:** mais a **lupa** (procurando), o **z** (cochilo) e a **bateria vazia** (cansado); o sinal fica numa placa da cor do estado; no radar e na hélice, a orelha do selo balança em vez de dar a volta | Dá para ler o estado na pílula, onde os gestos não cabem. Fica na orelha, e não num círculo no canto da cabeça como no Mochi (D12 da 001). A 100% de escala, quem separa os estados é a cor da placa (aprovado assim) |
@@ -255,6 +256,21 @@ enquanto está recolhida (D10).
 > 4. **Cliques de 10 s antes contavam no carinho:** o relógio dos cliques era o `this.t`, que para
 >    no gato escondido. Agora é o tempo de verdade (`relogio`, de mentira nos testes; teste com
 >    controle). **110 testes em JS.** O 2 e o 3 só se conferem no app.
+>
+> **09/10 — Depois do commit da F3: as caras extras que nunca apareciam (D13, decisão sua).** Você
+> notou que a cara dos testes só aparecia pela bandeja. Das 8 extras da E1, só o ops e o negou tinham
+> gatilho. Agora: 👌 testes (o adaptador marca o `Bash` de teste no `PostToolUse`), 👍 feito (fim
+> com arquivos editados), 😱 socorro (`StopFailure` que não é limite), 👋 oi (momento de 1,5 s no
+> prompt de uma sessão nova, por cima do "pensando") e 👉 aqui (pedido há 10 s na tela). A eita fica
+> para a 003. **112 testes em JS**; os novos falham contra o código anterior. No app: 👌 num
+> `npm test` desta sessão; oi, socorro e aqui com a sessão `sim-d13` simulada pela ponte (o pedido
+> de mentira venceu o prazo e saiu sem resposta, sem `allow`); 👍 no fim desta sessão. **Você viu
+> as cinco certas.** Revisão do Codex, só de leitura: 3 achados, corrigidos com controle. (1) A
+> regex dos testes casava quem só fala de teste (`echo npm test`, `npm install jest`): agora o
+> comando é cortado nos separadores e o teste tem de estar no começo de um pedaço. (2) O 👋 cortava
+> o susto e a saudação: agora não corta momento nenhum. (3) Uma sessão que saía do Map (teto ou
+> `SessionEnd` e retomada) ganhava o 👋 de novo: agora o `sessao.js` lembra as chaves já vistas
+> (até 200). **113 testes em JS.**
 >
 > **08/10 (noite) — Ligada aos eventos; a memória resolvida.** O que entrou:
 > - **Estados pelos eventos:** `estadoDoGato` no `sessao.js` (com testes). `Grep`/`Glob`/`WebSearch`/

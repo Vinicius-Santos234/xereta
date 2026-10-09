@@ -341,13 +341,43 @@ test('o estado do gato (F3): procurando, maratona, a reação pequena e o fim', 
   S.receber(ev('pensando'));
   assert.equal(estadoDoGato(ferramenta('n'), S.receber(ferramenta('n', 'y'))), 'trabalhando');
 
-  // o fim manda: feliz, erro ou cansado
+  // o fim manda: feliz, socorro (D13) ou cansado
   assert.equal(estadoDoGato(ev('fim'), S.receber(ev('fim', { mensagem: 'ok' }))), 'feliz');
-  assert.equal(estadoDoGato(ev('erro'), S.receber(ev('erro'))), 'erro');
+  assert.equal(estadoDoGato(ev('erro'), S.receber(ev('erro'))), 'socorro');
   const limite = S.receber(ev('erro', { motivo: 'limite' }));
   assert.equal(limite.fim.limite, true);
   assert.equal(estadoDoGato(ev('erro'), limite), 'cansado');
   // sem sessão (o sessao.js da ilha não carregou), pelo tipo
   assert.equal(estadoDoGato(ev('ferramenta', { procura: true })), 'procurando');
   assert.equal(estadoDoGato({ tipo: 'desconhecido' }), 'parado');
+});
+
+test('as caras extras da D13: testes, feito, socorro e a sessão nova (09/10)', () => {
+  const S = criarSessoes();
+  assert.equal(S.receber(ev('pensando')).primeiro, true, 'a ilha ainda não conhecia esta sessão');
+  assert.equal(S.receber(ferramenta('t', 'Rodando npm test')).primeiro, false);
+
+  // o teste que terminou bem é o 👌, mesmo na maratona; outro Bash, não
+  const teste = ev('concluiu', { ferramenta: 'Bash', passoId: 't', teste: true });
+  assert.equal(estadoDoGato(teste, S.receber(teste)), 'testes');
+  assert.equal(estadoDoGato(concluiu('t'), S.obter(base)), 'trabalhando');
+  for (let i = 0; i < PASSOS_DA_MARATONA; i++) S.receber(ferramenta(`m${i}`, 'x'));
+  assert.equal(estadoDoGato(teste, S.obter(base)), 'testes');
+
+  // o fim de quem editou arquivos é o 👍; o de quem só leu ou respondeu, o feliz
+  S.receber(ferramenta('e', 'Editando a.ts'));
+  S.receber(editou('e', 'C:\\vitrine\\a.ts', 2, 1));
+  assert.equal(estadoDoGato(ev('fim'), S.receber(ev('fim'))), 'feito');
+  S.receber(ev('pensando'));
+  assert.equal(estadoDoGato(ev('fim'), S.receber(ev('fim'))), 'feliz');
+
+  // conhecida continua conhecida: depois de sair pelo teto de sessões ou do SessionEnd (Codex, 09/10)
+  for (let i = 0; i < 25; i++) S.receber(ev('pensando', { sessao: `outra${i}` }));
+  assert.equal(S.receber(ev('pensando')).primeiro, false, 'a s1 saiu pelo teto e voltou');
+  S.receber(ev('saida'));
+  assert.equal(S.receber(ev('pensando')).primeiro, false, 'a s1 foi retomada depois do SessionEnd');
+
+  // sem a sessão (o sessao.js da ilha não carregou), a sessão que parou com erro também é o 😱
+  assert.equal(estadoDoGato(ev('erro')), 'socorro');
+  assert.equal(estadoDoGato(ev('erro', { ferramenta: 'Bash' })), 'ops');
 });

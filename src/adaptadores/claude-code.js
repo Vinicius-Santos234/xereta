@@ -59,6 +59,18 @@ const ADAPTADOR_CLAUDE_CODE = (() => {
   // as que só procuram: o gato fica "procurando" (§4 da 002)
   const PROCURAS = new Set(['Grep', 'Glob', 'WebSearch', 'WebFetch']);
 
+  // Um Bash que roda testes: se terminar bem, o gato faz o 👌 (D13 da 002). O comando é cortado nos
+  // separadores (`&&`, `||`, `;`, `|`) e o teste tem de estar no começo de um pedaço, depois de umas
+  // variáveis (`CI=1`): `echo npm test` e `npm install jest` só falam de teste. Olha só o começo do
+  // comando, e as regex não têm repetição aninhada: roda a cada evento (regra 2). Um `npm test | tail`
+  // termina bem mesmo com teste falhando (quem dá o código de saída é o `tail`): aí o 👌 mente.
+  const COMANDO_DE_TESTE = new RegExp('^(?:\\w+=\\S*\\s+){0,3}(?:(?:npm|pnpm|yarn|bun)(?:\\s+run)?\\s+test|' +
+    'cargo\\s+test|node\\s+--test|python[\\d.]*\\s+-m\\s+(?:pytest|unittest)|' +
+    '(?:npx\\s+|bunx\\s+|yarn\\s+|pnpm\\s+(?:exec\\s+)?)?(?:pytest|jest|vitest|mocha)|' +
+    'go\\s+test|dotnet\\s+test|flutter\\s+test|mvn\\s+test|(?:\\.\\/)?gradlew?\\s+test)(?![\\w-])');
+  const ehTeste = h => h.tool_name === 'Bash' && String(h.tool_input?.command ?? '').slice(0, 500)
+    .split(/&&|\|\||[;|\n]/).some(pedaco => COMANDO_DE_TESTE.test(pedaco.trim()));
+
   // O PermissionRequest não traz `tool_use_id` (visto na E3). Para saber de qual ferramenta é o
   // pedido, a ponte compara esta assinatura (o nome e a entrada) com a do PreToolUse, que traz o
   // id. É o JSON inteiro, com as chaves em ordem: um resumo (hash) pode colidir, e a ordem das
@@ -94,6 +106,7 @@ const ADAPTADOR_CLAUDE_CODE = (() => {
         // a ferramenta terminou; nas edições, com o +N −M do patch
         case 'PostToolUse': {
           const concluiu = passo('concluiu', resumirFerramenta(h.tool_name, h.tool_input));
+          if (ehTeste(h)) return { ...concluiu, teste: true };
           if (!EDICOES.has(h.tool_name)) return concluiu;
           const caminho = String(h.tool_input?.file_path ?? h.tool_response?.filePath ?? '');
           return { ...concluiu, edicao: { caminho, conta: contarEdicao(h.tool_response) } };

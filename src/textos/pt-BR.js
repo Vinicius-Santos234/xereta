@@ -149,5 +149,6 @@ const TEXTOS = {
     carinho: { rotulo: 'Carinho', fala: 'Rrrrrr…', pilula: 'Rrrrrr…' },
     tonto: { rotulo: 'Cutucão', fala: 'Ei! Para com isso… volto em 3 segundos.', pilula: 'Ei! Para!' },
     saudacao: { rotulo: 'Saudação', fala: 'Opa, cheguei!', pilula: 'Opa!' },
+    oi: { rotulo: 'Oi (sessão nova)', fala: 'Oi! Bora lá?', pilula: 'Oi!' },
   },
 };

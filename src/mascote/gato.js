@@ -39,6 +39,8 @@ const MOMENTOS = {
   carinho:  { dur: 1.3, olhos: 'feliz',       orelhas: 'relaxar' },
   tonto:    { dur: 3,   olhos: 'espiral',     orelhas: 'tonto',   bigodes: 'murchar', gestos: null, caneca: false, selo: null },
   saudacao: { dur: 1.9, olhos: 'normal',      orelhas: 'alerta',  bigodes: 'repouso', gestos: { 1: 'acenar' }, caneca: false, afunda: 0 },
+  // a cara 👋 das extras, como momento: no prompt de uma sessão nova, por cima do "pensando" (D13)
+  oi:       { dur: 1.5, olhos: 'normal',      orelhas: 'alerta',  bigodes: 'repouso', gestos: { 1: 'acenar' }, caneca: false, afunda: 0 },
 };
 
 // com um pedido na tela, o gato não brinca: nada de carinho, tonto nem patadinha
@@ -457,6 +459,8 @@ class Gato {
   // Começa um momento (MOMENTOS). Devolve false se não começou.
   reagir(nome) {
     if (!MOMENTOS[nome]) return false;
+    // o 👋 da sessão nova é o mais fraco: não corta o susto, a saudação nem um carinho em andamento
+    if (nome === 'oi' && this.momento) return false;
     const m = mov();
     this.momento = { nome, t: 0, dur: MOMENTOS[nome].dur };
     this.aplicar(false);
@@ -467,6 +471,7 @@ class Gato {
       for (const o of this.orelhas) o.ergue.chute(7 * m);
     }
     if (nome === 'carinho') this.amasso.chute(.8 * m);
+    if (nome === 'oi') for (const o of this.orelhas) o.ergue.chute(5 * m);
     if (nome === 'tonto') this.chacoalho.chute(14 * m);
     if (nome === 'saudacao' && m) { this.pulo.v = 2.4; this.pulo.vel = 0; } // começa escondido embaixo e espia
     this.op.aoMomento?.(nome);
