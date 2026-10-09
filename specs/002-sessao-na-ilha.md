@@ -1,6 +1,6 @@
 # Spec 002 — A ilha conta a sessão
 
-**Status:** **aprovada em 07/10**, em andamento: **F1 e F2 concluídas em 07/10, F3 (o gato) concluída em 09/10**; a seguir, a linha do tempo (D11), presa à ilha grande da 003. Emenda de 07/10 na D3 (o `+N −M` vem do
+**Status:** **aprovada em 07/10**, em andamento: **F1 e F2 concluídas em 07/10, F3 (o gato) concluída em 09/10**; falta a linha do tempo (D11), presa à ilha grande da 003 (D1 e F1 da 003 aprovadas em 09/10; o começo espera a sua palavra). Emenda de 07/10 na D3 (o `+N −M` vem do
 `PostToolUse`).
 **Origem:** `ideias/coucou-instagram.md` (P3, P4, P5, P6, P7, P10 e P11) e `ideias/mascote.md`.
 **Depende de:** E3 da 001, que é quando os campos reais dos hooks são vistos pela primeira vez.

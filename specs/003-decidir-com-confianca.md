@@ -1,6 +1,8 @@
 # Spec 003 — Decidir com confiança
 
-**Status:** rascunho (05/10), aguardando a sua aprovação. Começa depois da 001 (E4).
+**Status:** rascunho (05/10). **A D1 (com a emenda de 09/10) e a F1 (a ilha grande) foram aprovadas
+por você em 09/10**, porque a linha do tempo da 002 (D11) depende delas; ainda não começaram, por
+decisão sua. O resto (D2–D10, F2–F4) continua aguardando a sua aprovação. Começa depois da 001 (E4).
 **Origem:** `ideias/diferenciais.md`, itens 2 (diff antes de aprovar), 3 (nível de risco) e
 4 ("sempre permitir" com regra visível). É o coração do que diferencia o Xereta.
 **Depende de:** E4 da 001 (permissão pela ilha) e do módulo `src/diff.js` da 002.
@@ -42,7 +44,7 @@ e não existe lista de regras. Nada parecido com o nível de risco apareceu.
 
 | # | Decisão | Escolha | Motivo |
 |---|---|---|---|
-| D1 | Tamanho da ilha | Um terceiro tamanho, **"ilha grande"** (~600×380), só para pedidos com diff e perguntas (004). **A janela passa a ter o tamanho da ilha grande**, e o recorte continua cortando a forma (D11 da 001) | Mudar o tamanho da janela trouxe o engasgo de volta em 03/10. Uma janela maior parada custa memória: medir de novo (F1) |
+| D1 | Tamanho da ilha | Um terceiro tamanho, **"ilha grande"** (~600×380), só para pedidos com diff e perguntas (004). **Emenda de 09/10, aprovada por você:** e para a linha do tempo da sessão (D11 da 002). **A janela passa a ter o tamanho da ilha grande**, e o recorte continua cortando a forma (D11 da 001) | Mudar o tamanho da janela trouxe o engasgo de volta em 03/10. Uma janela maior parada custa memória: medir de novo (F1) |
 | D2 | Diff do Edit e do MultiEdit | Feito **em JS** com `old_string`/`new_string`, mostrando 3 linhas de contexto quando dá | Não precisa ler o arquivo. O número da linha só aparece se o arquivo for lido (D3) |
 | D3 | Diff do Write | **O Rust lê o arquivo atual** (comando `ler_texto`) e o JS compara com o `content`. Arquivo que não existe vira "arquivo novo", com todas as linhas como `+` | O Coucou trata todo Write como arquivo novo, e sobrescrever um arquivo inteiro é justamente onde o diff mais importa. Ler arquivo é Rust de plataforma, como o recorte (D2 da 001) |
 | D4 | Limites do `ler_texto` | Só caminho absoluto, só arquivo comum (não pasta nem link), até 1 MB, só UTF-8. Fora disso, "diff indisponível", e o pedido segue normal | O caminho vem do `tool_input`, isto é, de fora. O token da 001 já protege a rota, e o limite protege a memória |
