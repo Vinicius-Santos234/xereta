@@ -59,6 +59,19 @@ forks** e dezenas de PRs abertos. É muito ativo.
 - **11 e 12 estão em parte nele:** o estado `ratelimit`, a pílula de uso do plano, Pausar e Mudo.
 - **3 e 4 seguem sem nada parecido.**
 
+**Revisto em 05/11, relendo o repositório** (commit `7436363`, de 03/11; 6.982 estrelas e 1.149 forks):
+- **2, 3 e 4 continuam:** no Windows, o pedido dele mostra só o comando ou o caminho
+  (`windows/src/views/views.ts`), sem diff e sem risco. O "Always" saiu de lá até existir uma lista
+  de regras.
+- **7 e 9 deixaram de ser diferencial:** ele já fala (« OK Coucou ») e aprova pelo iPhone e pelo
+  Android.
+- **10 perdeu força de novo:** agora há instalador no Windows, ainda sem assinatura, atualização em
+  um clique e português entre 16 idiomas.
+- **15 ficou mais estreito:** um PR aberto (#580) detecta chamada e esconde a ilha. O nosso continua
+  na tela e respondível, sem mostrar o que é sensível.
+- **Ele cresceu para outro lado:** ditado, gravação de reuniões, e-mail, WhatsApp, chat pelo plano e
+  carteira de cripto. Não dá para ganhar em número de funções.
+
 **Para onde foi cada ideia (05/10, specs em rascunho):**
 
 | Ideia | Spec |
@@ -70,6 +83,7 @@ forks** e dezenas de PRs abertos. É muito ativo.
 | 11. Mascote que reflete a sessão | 002 (estados novos, cansado quando o limite acaba) e F5 da 005 (cansado perto do limite) |
 | 5. Resumo e vault · 7. Voz · 8. Gesto · 9. Celular | Ainda sem spec |
 | 10. Windows e português | Já é a 001 (D16) e o jeito de todas |
+| 18 a 27. De olho no que acontece | Ainda sem spec, à espera da sua escolha |
 
 ---
 
@@ -146,6 +160,66 @@ autenticação com muito cuidado: é aprovar comandos de fora da máquina.
 
 ---
 
+## De olho no que acontece
+
+*(05/11)* **Nada aqui foi escolhido.** O rumo que veio junto também é proposta: o Coucou virou o
+centro de tudo o que você usa, e o Xereta fica de olho no que acontece no seu PC e só te chama
+quando precisa. A regra de escopo seria: **só entra o que dá para saber pela própria máquina, sem
+chave, conta ou internet.**
+
+Não achei nenhuma destas no Coucou (README, notas de versão, issues, PRs e código de 03/11), salvo
+onde está indicado. Foi busca por palavras, então isso não prova que não exista. O custo é
+estimativa.
+
+**Do agente**
+
+### 18. Comando parado 🟢
+"`npm run dev` rodando há 12 min": um `PreToolUse` sem o `PostToolUse` depois de alguns minutos. A
+ilha só dá o fato, porque um teste longo também é normal.
+
+### 19. Agente em círculo 🟢
+"`npm test` falhou 5 vezes seguidas", para você interromper antes de gastar o plano. O mais próximo
+no Coucou é um PR aberto (#969), que faz o Mochi reagir a testes.
+
+### 20. Mesmo arquivo em duas sessões 🟢
+"Duas sessões editaram `frete.ts`." As edições de cada sessão já chegam pelo `PostToolUse`.
+
+### 21. O que passou sem pedir 🟡
+Edição fora da pasta do projeto ou em `.env`, mesmo com a ferramenta já liberada. Só avisa, não
+bloqueia. É o item 3 para o que nunca vira pedido.
+
+### 22. Trabalho sem commit 🟡
+"3 arquivos sem commit" no cartão do fim, com um `git status` na pasta da sessão.
+
+**Do PC de quem programa**
+
+### 23. Servidores locais 🟡
+"vitrine :5173 · api :3000 caiu", e quem está segurando uma porta ocupada. Docker pode vir depois.
+Se a ilha ganhar módulos, é candidata a segundo módulo: força a decisão de quem fica com o espaço, e
+música não nos diferencia (o Coucou já tem Spotify e um PR aberto, #1026, para qualquer player).
+
+### 24. Comando longo terminou 🟡
+"`cargo build` falhou depois de 2m14", sem digitar `&& xereta` (item 14). Mexe no perfil do
+terminal, então segue a D14.
+
+**Fora da programação**
+
+### 25. Câmera e microfone 🟡
+"Microfone ligado: Teams": um gato xereta avisando quem está xeretando você. Falta conferir se o
+Windows informa isso de forma confiável. O PR aberto #580 do Coucou detecta chamada, mas para
+esconder a ilha.
+
+### 26. Download terminou 🟢
+"`relatorio.pdf` pronto", com um clique para abrir.
+
+### 27. PC em apuros 🟡
+"`node.exe` com 98% de CPU há 5 min", disco quase cheio ou internet caída. No Mac, o Mochi já reage
+a CPU, memória e bateria; no Windows não achei.
+
+**Ordem sugerida:** a 003 (2, 3, 4 e 17) → 18, 19 e 20 → 24 e 26 → 23.
+
+---
+
 ## Identidade
 
 ### 10. Feito para Windows e em português 🟢
@@ -172,3 +246,6 @@ prototipar estão em `ideias/mascote.md`. → **002** e **003**
 - 02/10 — Nome provisório *Xereta*, e várias fontes pedidas desde o começo (item 1).
 - 05/10 — Ideias trazidas por você: linha do tempo (13), comando `xereta` (14), modo
   apresentação (15), sons (16), selo `+N −M` (17) e a personalidade do gato (em `ideias/mascote.md`).
+- 05/11 — Você propôs uma ilha geral, com o Xereta como a parte de dev. Depois da conversa, o escopo
+  principal ficou no dev, diferente do Coucou e útil também fora da programação. A regra de escopo
+  e as ideias 18 a 27 são sugestões minhas, à espera da sua escolha.
